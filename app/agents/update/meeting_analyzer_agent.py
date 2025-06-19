@@ -22,19 +22,48 @@ def summarize_meeting_text(full_text: str) -> str :
 # 임무 (Task)
 아래 회의록 텍스트를 분석하여, '주요 요구사항 변경사항'을 아래 형식에 맞춰 요약해 주세요.
 
-[회의 핵심 결의사항] 
-* 회의의 가장 중요한 결정이나 결론을 1~2 문장으로 요약합니다.
-[주요 변경사항 목록]
-* 추가된 요구사항 (Added)
-* 수정된 요구사항 (Modified)
-* 삭제된 요구사항 (Deleted)
+# 출력 형식: HTML (Output Format: HTML)
+* 최종 요약 결과는 다른 설명 없이, 아래에 정의된 HTML 구조에 맞춰 코드만 반환해야 합니다.
+* 각 항목의 내용은 간결한 명사형(개조식)으로 작성하여 채워주세요.
+* 회의록에서 근거(요청자, 사유)를 찾을 수 없는 경우, '관련 근거' 셀은 비워두거나 '특이사항 없음'으로 표시합니다.
 
-# 제약 조건 및 출력 형식 (Constraints & Format)
-* 반드시 **한국어**로 답변해야 합니다.
-* '주요 변경사항 목록'의 각 항목은 **불렛 포인트(• 또는 -)**를 사용하여 작성해야 합니다.
-* 각 변경사항에 대해, 회의록에 근거가 명시된 경우 **누가, 어떤 사유로 요청했는지** 간략하게 포함해 주세요.
-* 회의록에 명시되지 않은 내용은 절대 추측하거나 생성해서는 안 됩니다.
-* 모든 결과는 보고서의 **개조식(箇條式)** 스타일, 즉 명사형으로 끝나는 간결한 단답형으로 작성할 것.
+# HTML 출력 템플릿
+<!DOCTYPE html>
+<html lang="ko">
+<body>
+    <table class="summary-table">
+        <caption>[회의 제목]</caption>
+        <thead>
+            <tr>
+                <th class="category">구분</th>
+                <th>핵심 내용</th>
+                <th>관련 근거 (요청자/사유)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="category">회의 핵심 결의사항</td>
+                <td colspan="2"></td>
+            </tr>
+            <tr>
+                <td class="category">추가된 요구사항 (Added)</td>
+                <td><ul></ul></td>
+                <td><ul></ul></td>
+            </tr>
+            <tr>
+                <td class="category">수정된 요구사항 (Modified)</td>
+                <td><ul></ul></td>
+                <td><ul></ul></td>
+            </tr>
+            <tr>
+                <td class="category">삭제된 요구사항 (Deleted)</td>
+                <td><ul></ul></td>
+                <td><ul></ul></td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html>
 
 회의록:
 \"\"\"
@@ -51,6 +80,12 @@ def summarize_meeting_text(full_text: str) -> str :
             temperature=0.1
         )
         summary = response.choices[0].message.content.strip()
+
+        if "```html" in summary:
+            summary = summary.split("```html")[1].split("```")[0].strip()
+        elif "<!DOCTYPE html>" in summary:
+            summary = summary[summary.find("<!DOCTYPE html>"):]
+            
         return summary
     
     except Exception as e:
