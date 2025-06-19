@@ -7,6 +7,56 @@ from app.schemas.request import MeetingActionItem
 
 # client = OpenAI(api_key=OPENAI_API_KEY) # 모듈 레벨 또는 함수 내에서 생성
 
+def summarize_meeting_text(full_text: str) -> str :
+    client_instance = OpenAI(api_key=OPENAI_API_KEY)
+    """
+    LLM을 이용하여 회의록을 요약해서 보여주는 agent
+    """
+    prompt = f"""
+# 역할 (Role)
+당신은 IT 프로젝트의 요구사항 변경 관리 전문가이자 시니어 비즈니스 분석가(Senior Business Analyst)입니다. 당신의 임무는 회의록을 분석하여 요구사항의 변경 내역을 정확하게 식별하고 구조화하여 문서화하는 것입니다.
+
+# 맥락 (Context)
+이 텍스트는 '소프트웨어 요구사항 정의서(SRS)'의 변경점을 논의하고 확정하기 위한 회의의 녹취록입니다. 따라서 회의의 모든 논의는 요구사항의 추가, 수정, 삭제에 초점이 맞춰져 있습니다.
+
+# 임무 (Task)
+아래 회의록 텍스트를 분석하여, '주요 요구사항 변경사항'을 아래 형식에 맞춰 요약해 주세요.
+
+[회의 핵심 결의사항] 
+* 회의의 가장 중요한 결정이나 결론을 1~2 문장으로 요약합니다.
+[주요 변경사항 목록]
+* 추가된 요구사항 (Added)
+* 수정된 요구사항 (Modified)
+* 삭제된 요구사항 (Deleted)
+
+# 제약 조건 및 출력 형식 (Constraints & Format)
+* 반드시 **한국어**로 답변해야 합니다.
+* '주요 변경사항 목록'의 각 항목은 **불렛 포인트(• 또는 -)**를 사용하여 작성해야 합니다.
+* 각 변경사항에 대해, 회의록에 근거가 명시된 경우 **누가, 어떤 사유로 요청했는지** 간략하게 포함해 주세요.
+* 회의록에 명시되지 않은 내용은 절대 추측하거나 생성해서는 안 됩니다.
+* 모든 결과는 보고서의 **개조식(箇條式)** 스타일, 즉 명사형으로 끝나는 간결한 단답형으로 작성할 것.
+
+회의록:
+\"\"\"
+{full_text}
+\"\"\"
+"""
+    try:
+        response = client_instance.chat.completions.create(
+            model = LLM_MODEL,
+            messages = [
+                {"role": "system", "content": "당신은 전문 회의록 요약가입니다."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.1
+        )
+        summary = response.choices[0].message.content.strip()
+        return summary
+    
+    except Exception as e:
+        print(f"[회의록 요약 실패]: {e}")
+        return "요약 생성에 실패했습니다."
+
 def extract_actions_from_meeting_text(full_text: str) -> List[MeetingActionItem]:
     # 이전 답변에서 제안된 `extract_actions_from_meeting_agent` 함수 로직과 유사
     # OpenAI 클라이언트 인스턴스를 외부에서 주입받거나 여기서 생성

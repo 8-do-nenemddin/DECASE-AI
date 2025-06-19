@@ -5,8 +5,12 @@ import uuid
 from typing import Optional
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Form, UploadFile, File
 from app.schemas.request import ProcessMeetingRequest, ProcessMeetingResponse, ChangeRequestResultItem
-from app.services.change_request_service import process_meeting_for_change_requests
+from app.services.change_request_service import process_meeting_for_change_requests, summarize_and_save_meeting
 from app.core.config import INPUT_DIR, FAISS_INDEX_DIR, METADATA_STORAGE_DIR
+
+from fastapi import Depends
+from app.core.mysql_config import get_mysql_db
+
 
 router = APIRouter()
 
@@ -39,10 +43,12 @@ def process_meeting_background_task(
 @router.post("/process-meeting-minutes", response_model=ProcessMeetingResponse)
 async def endpoint_process_meeting_minutes(
     background_tasks: BackgroundTasks,
+    meeting_file_id: str = Form(..., description="RDB에 저장된 회의록 id"),
     meeting_file: UploadFile = File(..., description="분석할 회의록 파일 (txt, md 등 텍스트 파일)"),
     faiss_index_name: str = Form(..., description="사용할 FAISS 인덱스 파일명 (예: existing_requirements.faiss)"),
     metadata_name: str = Form(..., description="사용할 메타데이터 파일명 (예: existing_requirements_metadata.json)"),
-    top_k: Optional[int] = Form(1, description="유사도 검색 시 반환할 상위 결과 개수")
+    top_k: Optional[int] = Form(1, description="유사도 검색 시 반환할 상위 결과 개수"),
+    db = Depends(get_mysql_db)
 ):
     # FAISS 인덱스 및 메타데이터 파일 존재 여부 확인
     if not os.path.exists(os.path.join(FAISS_INDEX_DIR, faiss_index_name)):
@@ -62,6 +68,8 @@ async def endpoint_process_meeting_minutes(
         raise HTTPException(status_code=400, detail="회의록 내용이 비어있습니다.")
 
     task_id = str(uuid.uuid4())
+
+    summarize_and_save_meeting(db, meeting_file_id, meeting_file)
 
     background_tasks.add_task(
         process_meeting_background_task,

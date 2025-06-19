@@ -7,6 +7,7 @@ class Source(Base):
 
     source_id = Column(Integer, primary_key=True, autoincrement=True)
     req_id_code = Column(String, nullable=True)
+    doc_description = Column(String, nullable=True)
     page_num = Column(Integer, nullable=False)
     rel_sentence = Column(String(5000), nullable=False)
     
