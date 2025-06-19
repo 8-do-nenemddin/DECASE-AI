@@ -10,7 +10,7 @@ from app.repositories.document_repository import DocumentRepository
 from app.core.mysql_config import get_mysql_db
 
 # 수정된 서비스 함수 import
-from app.services.background_asis_services import run_as_is_analysis_and_return_bytes
+from app.services.asis_services import asis_pipeline
 from app.api.v2.jobs import job_store, update_job_status
 
 router = APIRouter()
@@ -37,7 +37,7 @@ async def process_as_is_background(pdf_content: bytes, job_id: str):
         # 2. 분석 함수를 호출하여 파일 저장 및 바이트 반환을 동시에 수행
         print(f"Job[{job_id}]: 백그라운드 분석/저장 시작...")
         result_pdf_bytes = await asyncio.to_thread(
-            run_as_is_analysis_and_return_bytes, 
+            asis_pipeline, 
             pdf_content,
             output_pdf_path  # 생성한 파일 경로 전달
         )
@@ -92,8 +92,6 @@ async def create_document_record(filename: str, file_path: str, project_id: int,
         raise Exception(f"DB에 문서 정보 저장 실패: {e}")
 
 # (generate_doc_id, start_as_is_analysis 함수는 이전과 동일하게 사용)
-# ... 이하 기존 `asis_db.py`의 다른 함수들 ...
-
 async def generate_doc_id(type_prefix: str, document_repository: DocumentRepository) -> str:
     """Generate an incremental document ID with the given prefix"""
     try:

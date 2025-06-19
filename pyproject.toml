@@ -55,6 +55,7 @@ sentence-transformers = "^4.1.0"
 reportlab = "^4.4.1"
 markdown-pdf = "^1.7"
 aiomysql = "^0.2.0"
+google-genai = "^1.21.0"
 
 [build-system]
 requires = ["poetry-core"]
