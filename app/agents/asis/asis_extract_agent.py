@@ -6,6 +6,7 @@ from typing import Any, Dict
 
 from app.core.config import GEMINI_MODEL
 
+
 def extract_as_is_facts(client: genai.Client, uploaded_file: Any) -> Dict[str, Any]:
     """
     [1단계-A] As-Is 문서에서 개발자에게 필요한 구조화된 '기술 사실 데이터'를 상세하게 추출합니다.
@@ -58,7 +59,7 @@ def extract_as_is_facts(client: genai.Client, uploaded_file: Any) -> Dict[str, A
               mime_type='application/pdf',
             ), 
             prompt],
-            generation_config={
+            config={
                 "response_mime_type": "application/json",
                 "temperature": 0.0
             }

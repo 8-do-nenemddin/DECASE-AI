@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Form, UploadFile, File
 from app.schemas.faiss import CreateFaissIndexRequest, FaissIndexCreationResponse
 from app.services.background_faiss_service import create_faiss_index_background_task
-from app.core.config import OUTPUT_JSON_DIR, FAISS_INDEX_DIR, METADATA_STORAGE_DIR
+from app.core.config import OUTPUT_SRS_DIR, FAISS_INDEX_DIR, METADATA_STORAGE_DIR
 
 router = APIRouter()
 
@@ -23,7 +23,7 @@ async def endpoint_create_faiss_index(
         raise HTTPException(status_code=400, detail="잘못된 파일 형식입니다. JSON 파일을 업로드해주세요.")
 
     # 입력 파일 저장
-    input_file_path = os.path.join(OUTPUT_JSON_DIR, f"input_{input_file.filename}")
+    input_file_path = os.path.join(OUTPUT_SRS_DIR, f"input_{input_file.filename}")
     try:
         with open(input_file_path, "wb") as buffer:
             buffer.write(await input_file.read())
@@ -34,7 +34,7 @@ async def endpoint_create_faiss_index(
     if not os.path.exists(input_file_path):
         raise HTTPException(
             status_code=404,
-            detail=f"입력 JSON 파일 '{input_file_path}'을(를) 서버의 '{OUTPUT_JSON_DIR}' 경로에서 찾을 수 없습니다."
+            detail=f"입력 JSON 파일 '{input_file_path}'을(를) 서버의 '{OUTPUT_SRS_DIR}' 경로에서 찾을 수 없습니다."
         )
 
     task_id = str(uuid.uuid4())

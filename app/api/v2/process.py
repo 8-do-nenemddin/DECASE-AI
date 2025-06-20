@@ -7,12 +7,12 @@ from fastapi.concurrency import run_in_threadpool
 from concurrent.futures import ThreadPoolExecutor
 from app.schemas.requirement import ProcessResponse
 from app.graph.rfp_graph import get_rfp_graph_app
-from app.services.background_processing_service import process_requirements_in_memory
-from app.core.config import OPENAI_API_KEY, LLM_MODEL
-from app.agents.srs.requirements_extract_agent import extract_requirement_sentences_agent
-from app.agents.srs.requirements_refine_agent import name_classify_describe_requirements_agent
+from app.services.srs_services import process_requirements_in_memory
+from app.core.config import OPENAI_API_KEY, GPT_MODEL
+from app.agents.srs.req_extract_agent import extract_requirement_sentences_agent
+from app.agents.srs.req_refine_agent import name_classify_describe_requirements_agent
 from app.services.file_processing_service import extract_pages_as_documents, create_chunks_from_documents
-from app.core.config import INPUT_DIR, OUTPUT_JSON_DIR, CHUNK_SIZE, CHUNK_OVERLAP
+from app.core.config import OUTPUT_UPLOADS_DIR, OUTPUT_SRS_DIR, CHUNK_SIZE, CHUNK_OVERLAP
 from app.api.v2.jobs import job_store, update_job_status
 
 router = APIRouter()
@@ -21,7 +21,7 @@ compiled_app = get_rfp_graph_app()
 # 전역 스레드 풀 생성
 thread_pool = ThreadPoolExecutor(max_workers=4)
 
-os.makedirs(INPUT_DIR, exist_ok=True)
+os.makedirs(OUTPUT_UPLOADS_DIR, exist_ok=True)
 os.makedirs("app/docs", exist_ok=True)
 
 
@@ -91,7 +91,7 @@ def process_srs_background(pdf_content: bytes, job_id: str, original_filename: s
     try:
         # 임시 파일 저장
         unique_id = uuid.UUID(job_id)
-        temp_pdf_path = os.path.abspath(os.path.join(INPUT_DIR, f"temp_{unique_id}_{original_filename}"))
+        temp_pdf_path = os.path.abspath(os.path.join(OUTPUT_UPLOADS_DIR, f"temp_{unique_id}_{original_filename}"))
         
         try:
             with open(temp_pdf_path, "wb") as f:
@@ -141,8 +141,8 @@ def process_srs_background(pdf_content: bytes, job_id: str, original_filename: s
             
             # 결과 저장
             output_filename = f"processed_{unique_id}_{original_filename}.json"
-            output_json_path = os.path.join(OUTPUT_JSON_DIR, output_filename)
-            os.makedirs(OUTPUT_JSON_DIR, exist_ok=True)
+            output_json_path = os.path.join(OUTPUT_SRS_DIR, output_filename)
+            os.makedirs(OUTPUT_SRS_DIR, exist_ok=True)
             
             with open(output_json_path, "w", encoding="utf-8") as json_file:
                 json.dump(processed_results, json_file, ensure_ascii=False, indent=4)

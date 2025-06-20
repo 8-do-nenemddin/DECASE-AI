@@ -31,7 +31,7 @@ async def process_as_is_background(pdf_content: bytes, job_id: str):
         upload_dir = Path(OUTPUT_ASIS_DIR)
         upload_dir.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"ASIS_RESULT_{project_id}_{timestamp}.pdf"
+        filename = f"ASIS_REPORT_{project_id}_{timestamp}.pdf"
         output_pdf_path = upload_dir / filename
 
         # 2. 분석 함수를 호출하여 파일 저장 및 바이트 반환을 동시에 수행
@@ -46,7 +46,6 @@ async def process_as_is_background(pdf_content: bytes, job_id: str):
         saved_doc_info = None
         async for db in get_mysql_db():
             document_repository = DocumentRepository(db)
-            # ★★★ 변경점: 파일 저장 로직이 없는 DB 기록 함수 호출 ★★★
             saved_doc = await create_document_record(
                 filename=filename,
                 file_path=str(output_pdf_path),

@@ -5,7 +5,7 @@ import json
 import time
 from typing import Dict, Any
 from openai import OpenAI
-from app.core.config import OPENAI_API_KEY, LLM_MODEL
+from app.core.config import OPENAI_API_KEY, GPT_MODEL
 
 # LLM을 사용하므로 클라이언트 초기화
 client = OpenAI(api_key=OPENAI_API_KEY)
@@ -56,7 +56,7 @@ class RequirementIdManager:
         """
         try:
             response = client.chat.completions.create(
-                model=LLM_MODEL,
+                model=GPT_MODEL,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.1,
                 max_tokens=10

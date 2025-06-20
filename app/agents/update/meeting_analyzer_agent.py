@@ -2,7 +2,7 @@
 import json
 from typing import List, Dict, Any, Optional
 from openai import OpenAI # 또는 app.services.llm_call_service 사용
-from app.core.config import OPENAI_API_KEY, LLM_MODEL
+from app.core.config import OPENAI_API_KEY, GPT_MODEL
 from app.schemas.request import MeetingActionItem
 
 # client = OpenAI(api_key=OPENAI_API_KEY) # 모듈 레벨 또는 함수 내에서 생성
@@ -33,7 +33,7 @@ def extract_actions_from_meeting_text(full_text: str) -> List[MeetingActionItem]
     action_items_validated: List[MeetingActionItem] = []
     try:
         response = client_instance.chat.completions.create(
-            model=LLM_MODEL,
+            model=GPT_MODEL,
             response_format={"type": "json_object"},
             messages=[
                 {"role": "system", "content": "당신은 회의록 분석 전문가입니다. 응답은 'action_items' 키를 가진 JSON 객체로, 그 값은 지정된 필드를 가진 객체들의 리스트여야 합니다."},

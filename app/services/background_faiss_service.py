@@ -1,6 +1,6 @@
 # app/services/background_faiss_service.py
 import os
-from app.core.config import OUTPUT_JSON_DIR
+from app.core.config import OUTPUT_SRS_DIR
 from app.services.file_processing_service import prepare_data_for_faiss
 from app.services.faiss_service import build_and_save_faiss_index
 

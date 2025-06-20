@@ -6,7 +6,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Form, UploadFile, File
 from app.schemas.request import ProcessMeetingRequest, ProcessMeetingResponse, ChangeRequestResultItem
 from app.services.change_request_service import process_meeting_for_change_requests
-from app.core.config import INPUT_DIR, FAISS_INDEX_DIR, METADATA_STORAGE_DIR
+from app.core.config import OUTPUT_UPLOADS_DIR, FAISS_INDEX_DIR, METADATA_STORAGE_DIR
 
 router = APIRouter()
 
@@ -26,7 +26,7 @@ def process_meeting_background_task(
             top_k
         )
         # TODO: 결과를 DB 또는 파일에 저장 (task_id 사용)
-        output_filename = os.path.join(INPUT_DIR, f"cr_results_{task_id}.json") # 예시 저장 경로
+        output_filename = os.path.join(OUTPUT_UPLOADS_DIR, f"cr_results_{task_id}.json") # 예시 저장 경로
         with open(output_filename, "w", encoding="utf-8") as f:
             json_results = [item.model_dump() for item in results] # Pydantic 모델을 dict로 변환
             json.dump(json_results, f, ensure_ascii=False, indent=2)

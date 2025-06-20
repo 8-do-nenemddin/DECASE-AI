@@ -18,23 +18,6 @@ def sanitize_filename(name: str) -> str:
     name = re.sub(r'\s+', '_', name)
     return name[:100] # 파일명 길이 제한
 
-def extract_pages_as_documents(pdf_path: str) -> List[Document]:
-    docs = []
-    try:
-        document_fitz = fitz.open(pdf_path)
-        print(f"'{pdf_path}' 파일에서 텍스트 추출 중 (총 {len(document_fitz)} 페이지)...")
-        for page_num in range(len(document_fitz)):
-            page = document_fitz.load_page(page_num)
-            text = page.get_text("text", sort=True)
-            if text.strip(): # 내용이 있는 페이지만 추가
-                docs.append(Document(page_content=text, metadata={"page_number": page_num + 1}))
-            if (page_num + 1) % 10 == 0 or (page_num + 1) == len(document_fitz):
-                 print(f"  {page_num + 1}/{len(document_fitz)} 페이지 처리 완료.")
-        return docs
-    except Exception as e:
-        print(f"오류: PDF 파일 '{pdf_path}'에서 텍스트 추출 중 문제가 발생했습니다: {e}")
-        return []
-
 def create_chunks_from_documents(
     documents: List[Document],
     chunk_size: int = 2000,
@@ -282,3 +265,22 @@ def prepare_data_for_faiss(input_json_path: str) -> List[Dict[str, Any]]:
             "metadata": metadata
         })
     return faiss_data_items
+
+from markdown_pdf import MarkdownPdf, Section
+
+def save_report_to_file(report_content: str, filename: str = "as_is_technical_report.md"):
+    """
+    생성된 보고서 내용을 파일로 저장합니다.
+    """
+    user_css = "body { font-family: 'NanumGothic', 'Malgun Gothic', sans-serif; } @page { margin: 1in; }"
+    pdf_converter = MarkdownPdf(toc_level=2)
+    pdf_converter.add_section(Section(report_content), user_css=user_css)
+    try:
+        pdf_converter.save(filename)
+    except Exception as e:
+        print(f"\n🔥 파일 저장 중 오류 발생: {e}")
+
+def create_chunks(data: List, chunk_size: int) -> List[List]:
+    """리스트를 주어진 크기의 청크로 나눕니다."""
+    return [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
+

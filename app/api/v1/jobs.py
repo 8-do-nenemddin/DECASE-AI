@@ -4,7 +4,7 @@ import uuid
 from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, Path
 from fastapi.responses import Response
-from app.core.config import OUTPUT_JSON_DIR
+from app.core.config import OUTPUT_SRS_DIR
 
 router = APIRouter(
     prefix="/jobs",
