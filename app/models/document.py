@@ -20,6 +20,7 @@ class Document(Base):
     doc_id = Column(String, primary_key=True)
     path = Column(String(1000), nullable=False)
     name = Column(String(100), nullable=False)
+    doc_description = Column(String, nullable=True)
     created_date = Column(DateTime, nullable=False, default=datetime.now)
     is_member_upload = Column(Boolean, nullable=False, default=False)
     
