@@ -36,3 +36,26 @@ class RefineResponse(BaseModel):
 class ProcessResponse(BaseModel):
     message: str
     requirements: List[Dict[str, Any]]
+
+    class Config:
+        orm_mode = True
+
+
+# SRS 분석 결과를 위한 스키마
+class SrsSourceData(BaseModel):
+    source_page: int
+    original_text: str
+
+class SrsRequirementData(BaseModel):
+    requirement_name: str
+    type: str
+    sources: List[SrsSourceData]
+    description: str
+    target_page: str
+    category_large: str
+    category_medium: str
+    category_small: str
+    importance: str
+    difficulty: str
+    requirement_id_prefix: str
+    requirement_id: str

@@ -2,12 +2,14 @@ import os
 import json
 import uuid
 import asyncio
+from typing import List
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from concurrent.futures import ThreadPoolExecutor
+from pydantic import TypeAdapter, ValidationError
 
 from app.services.srs_services import srs_pipeline
-
+from app.schemas.requirement import SrsRequirementData
 from app.core.config import OUTPUT_UPLOADS_DIR, OUTPUT_SRS_DIR
 from app.api.v2.jobs import job_store, update_job_status
 from datetime import datetime
@@ -22,6 +24,7 @@ router = APIRouter()
 thread_pool = ThreadPoolExecutor(max_workers=4)
 
 os.makedirs(OUTPUT_UPLOADS_DIR, exist_ok=True)
+os.makedirs(OUTPUT_SRS_DIR, exist_ok=True)
 
 @router.post("/srs-agent/start")
 async def start_srs_analysis(
@@ -86,8 +89,6 @@ async def start_srs_analysis(
         )
 
 
-# process_srs_background 함수 수정
-
 async def process_srs_background(pdf_content: bytes, job_id: str, original_filename: str):
     """(개선) 백그라운드에서 임시 파일 없이 요구사항 분석 처리"""
     try:
@@ -102,7 +103,16 @@ async def process_srs_background(pdf_content: bytes, job_id: str, original_filen
         )
         
         print("\n=== 요구사항 저장 프로세스 시작 ===")
-        await save_requirements_to_db(final_json_output, job_store[job_id])
+        
+        try:
+            # Pydantic TypeAdapter를 사용하여 JSON을 객체 리스트로 파싱
+            requirements_list = TypeAdapter(List[SrsRequirementData]).validate_python(json.loads(final_json_output))
+        except (json.JSONDecodeError, ValidationError) as e:
+            error_message = f"SRS 파이프라인 결과 파싱 오류: {e}"
+            print(error_message)
+            raise Exception(error_message)
+
+        await save_requirements_to_db(requirements_list, job_store[job_id])
 
         # 4. 성공 시 Job 상태 업데이트 (추가하면 좋음)
         update_job_status(job_id, status="COMPLETED", message="요구사항 명세서(SRS) 분석 및 저장이 완료되었습니다.")
@@ -115,7 +125,7 @@ async def process_srs_background(pdf_content: bytes, job_id: str, original_filen
         print(error_message)
         update_job_status(job_id=job_id, status="FAILED", error=error_message)
 
-async def save_requirements_to_db(processed_results, job_info):
+async def save_requirements_to_db(processed_results: List[SrsRequirementData], job_info):
     """
     요구사항 리스트를 DB에 저장하는 함수
     """
@@ -162,7 +172,8 @@ async def save_requirements_to_db(processed_results, job_info):
         # 요구사항을 순차적으로 저장
         for idx, requirement in enumerate(processed_results, 1):
             print(f"\n요구사항 {idx}/{len(processed_results)} 저장 시도:")
-            print(f"요구사항 데이터: {requirement}")
+            # Pydantic 모델을 json으로 변환하여 로그 출력 (가독성 향상)
+            print(f"요구사항 데이터: {requirement.model_dump_json(indent=2)}")
             try:
                 await requirement_service.create_requirement(requirement, member, project, document)
                 print(f"요구사항 {idx} 저장 성공")
