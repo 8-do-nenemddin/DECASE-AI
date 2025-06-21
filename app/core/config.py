@@ -14,10 +14,10 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-3-opus-20240229")
 
 
-OUTPUT_UPLOADS_DIR = os.getenv("FILE_STORAGE_PATH_UPLOADS", "app/docs")
-OUTPUT_SRS_DIR = os.getenv("FILE_STORAGE_PATH_SRS")
-OUTPUT_ASIS_DIR = os.getenv("FILE_STORAGE_PATH_ASIS")
-OUTPUT_MOCKUP_DIR = os.getenv("FILE_STORAGE_PATH_MOCKUP")
+OUTPUT_UPLOADS_DIR = os.getenv("FILE_STORAGE_PATH_UPLOADS", "app/output/docs")
+OUTPUT_SRS_DIR = os.getenv("FILE_STORAGE_PATH_SRS", "app/output/srs_result")
+OUTPUT_ASIS_DIR = os.getenv("FILE_STORAGE_PATH_ASIS", "app/output/asis_result")
+OUTPUT_MOCKUP_DIR = os.getenv("FILE_STORAGE_PATH_MOCKUP", "app/output/mockup_result")
 
 SENTENCE_TRANSFORMER_MODEL = os.getenv("SENTENCE_TRANSFORMER_MODEL", "all-MiniLM-L6-v2")
 
