@@ -36,6 +36,32 @@ spec:
               value: sk-team-08
             - name: NAMESPACE
               value: sk-team-08
+            # DB 설정
+            - name: MARIA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ai-secret
+                  key: MARIA_PASSWORD
+            - name: MARIA_USER
+              valueFrom:
+                  secretKeyRef:
+                    name: ai-secret
+                    key: MARIA_USER
+            - name: MARIA_HOST
+              valueFrom:
+                  secretKeyRef:
+                    name: ai-secret
+                    key: MARIA_HOST
+            - name: MARIA_PORT
+              valueFrom:
+                  secretKeyRef:
+                    name: ai-secret
+                    key: MARIA_PORT
+            - name: MARIA_NAME
+              valueFrom:
+                  secretKeyRef:
+                    name: ai-secret
+                    key: MARIA_NAME
             # api key 설정
             - name: OPENAI_API_KEY
               valueFrom:

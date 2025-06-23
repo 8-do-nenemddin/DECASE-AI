@@ -8,14 +8,14 @@ from app.core.base import Base
 load_dotenv()
 
 # 환경 변수에서 DB 설정 가져오기
-DB_PASSWORD = os.getenv("DB_PASSWORD", "")
-DB_USER = os.getenv("DB_USER", "root")
-DB_HOST = os.getenv("DB_HOST", "127.0.0.1")
-DB_PORT = os.getenv("DB_PORT", "3306")
-DB_NAME = os.getenv("DB_NAME")
+DB_PASSWORD = os.getenv("MARIA_PASSWORD", "")
+DB_USER = os.getenv("MARIA_USER", "root")
+DB_HOST = os.getenv("MARIA_HOST", "127.0.0.1")
+DB_PORT = os.getenv("MARIA_PORT", "3306")
+DB_NAME = os.getenv("MARIA_NAME")
 
 # MySQL 비동기 데이터베이스 URL
-ASYNC_DB_URL = f"mysql+aiomysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?charset=utf8mb4"
+ASYNC_DB_URL = f"mariadb+asyncmy://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?charset=utf8mb4"
 
 # 비동기 데이터베이스 엔진 생성
 async_engine = create_async_engine(ASYNC_DB_URL, echo=True)
