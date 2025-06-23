@@ -4,7 +4,7 @@ metadata:
   name: decase-ai
   namespace: sk-team-08
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: decase-ai
@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: decase-ai
-          image: amdp-registry.skala-ai.com/skala25a/sk-team-08-decase-ai:1.0.0-35-5fe45b563cea
+          image: amdp-registry.skala-ai.com/skala25a/sk-team-08-decase-ai:1.0.0-37-f241c0ce4369
           imagePullPolicy: Always
 
           # 볼륨 마운트 설정
