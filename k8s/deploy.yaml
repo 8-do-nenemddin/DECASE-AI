@@ -28,18 +28,6 @@ spec:
             # 파일 스토리지 경로들
             - name: storage-volume
               mountPath: /app/docs # 기본 docs 디렉터리
-            - name: storage-volume
-              mountPath: /app/docs/uploads # FILE_STORAGE_PATH_UPLOADS
-              subPath: uploads
-            - name: storage-volume
-              mountPath: /app/docs/srs # FILE_STORAGE_PATH_SRS
-              subPath: srs
-            - name: storage-volume
-              mountPath: /app/docs/asis # FILE_STORAGE_PATH_ASIS
-              subPath: asis
-            - name: storage-volume
-              mountPath: /app/docs/mockup # FILE_STORAGE_PATH_MOCKUP
-              subPath: mockup
 
           env:
             - name: LOGGING_LEVEL
