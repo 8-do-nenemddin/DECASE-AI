@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: decase-ai
-        image: amdp-registry.skala-ai.com/skala25a/sk-team-08-decase-ai:1.0.0-33-1ea9492c3a6b
+        image: amdp-registry.skala-ai.com/skala25a/sk-team-08-decase-ai:1.0.0-34-97dab8d5f2d5
           imagePullPolicy: Always
 
           # 볼륨 마운트 설정
