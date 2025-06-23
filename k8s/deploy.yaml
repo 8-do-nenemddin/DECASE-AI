@@ -11,26 +11,59 @@ spec:
   template:
     metadata:
       annotations:
-        prometheus.io/scrape: 'true'
-        prometheus.io/port: '8081'
-        prometheus.io/path: '/actuator/prometheus'
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8081"
+        prometheus.io/path: "/actuator/prometheus"
         update: 41ea7741d6ea2b0a77eb2c75861ae389
       labels:
         app: decase-ai
     spec:
       containers:
-      - name: decase-ai
-        image: amdp-registry.skala-ai.com/skala25a/sk-team-08-decase-ai:1.0.0-20-8e287dd56833
-        imagePullPolicy: Always
-        env:
-        - name: LOGGING_LEVEL
-          value: DEBUG
-        - name: USER_NAME
-          value: sk-team-08
-        - name: NAMESPACE
-          value: sk-team-08
-        - name: OPENAI_API_KEY
-          valueFrom:
-            secretKeyRef:
-              name: ai-secret
-              key: OPENAI_API_KEY
+        - name: decase-ai
+          image: amdp-registry.skala-ai.com/skala25a/sk-team-08-decase-ai:1.0.0-34-97dab8d5f2d5
+          imagePullPolicy: Always
+
+          # 볼륨 마운트 설정
+          volumeMounts:
+            # 파일 스토리지 경로들
+            - name: storage-volume
+              mountPath: /app/docs # 기본 docs 디렉터리
+
+          env:
+            - name: LOGGING_LEVEL
+              value: DEBUG
+            - name: USER_NAME
+              value: sk-team-08
+            - name: NAMESPACE
+              value: sk-team-08
+            # api key 설정
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ai-secret # 이거 ai secret이라고 써잇던데 decase-secret이 맞지않나..?
+                  key: OPENAI_API_KEY
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ai-secret
+                  key: ANTHROPIC_API_KEY
+            - name: GOOGLE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ai-secret
+                  key: GOOGLE_API_KEY
+            # 파일 스토리지 경로 설정
+            - name: FILE_STORAGE_PATH_UPLOADS
+              value: "/app/docs/uploads" # 볼륨 마운트 경로로 설정
+            - name: FILE_STORAGE_PATH_SRS
+              value: "/app/docs/srs" # 볼륨 마운트 경로로 설정
+            - name: FILE_STORAGE_PATH_ASIS
+              value: "/app/docs/asis" # 볼륨 마운트 경로로 설정
+            - name: FILE_STORAGE_PATH_MOCKUP
+              value: "/app/docs/mockup" # 볼륨 마운트 경로로 설정
+      # 단순 볼륨 설정
+      volumes:
+        - name: storage-volume
+          hostPath:
+            path: /var/lib/decase-ai-storage
+            type: DirectoryOrCreate # 기본 디렉터리만 자동 생성

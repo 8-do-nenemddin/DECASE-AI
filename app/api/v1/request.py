@@ -6,7 +6,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Form, UploadFile, File
 from app.schemas.request import ProcessMeetingRequest, ProcessMeetingResponse, ChangeRequestResultItem
 from app.services.change_request_service import process_meeting_for_change_requests, summarize_and_save_meeting
-from app.core.config import INPUT_DIR, FAISS_INDEX_DIR, METADATA_STORAGE_DIR
+from app.core.config import FAISS_INDEX_DIR, METADATA_STORAGE_DIR, OUTPUT_UPLOADS_DIR   
 
 from fastapi import Depends
 from app.core.mysql_config import get_mysql_db

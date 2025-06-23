@@ -5,4 +5,4 @@ COPY . /app
 
 EXPOSE 8000 8081 8080
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8081"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8081", "--workers", "4"]
