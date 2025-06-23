@@ -52,17 +52,17 @@ spec:
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: decase-secret # 이거 ai secret이라고 써잇던데 decase-secret이 맞지않나..?
+                  name: ai-secret # 이거 ai secret이라고 써잇던데 decase-secret이 맞지않나..?
                   key: OPENAI_API_KEY
             - name: ANTHROPIC_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: decase-secret
+                  name: ai-secret
                   key: ANTHROPIC_API_KEY
             - name: GOOGLE_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: decase-secret
+                  name: ai-secret
                   key: GOOGLE_API_KEY
             # 파일 스토리지 경로 설정
             - name: FILE_STORAGE_PATH_UPLOADS
