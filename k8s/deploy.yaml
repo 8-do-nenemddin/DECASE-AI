@@ -13,7 +13,7 @@ spec:
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "8081"
-        prometheus.io/path: "/actuator/prometheus"
+        prometheus.io/path: "/ai/api/v1/actuator/prometheus"
         update: 41ea7741d6ea2b0a77eb2c75861ae389
       labels:
         app: decase-ai
@@ -44,24 +44,24 @@ spec:
                   key: MARIA_PASSWORD
             - name: MARIA_USER
               valueFrom:
-                  secretKeyRef:
-                    name: ai-secret
-                    key: MARIA_USER
+                secretKeyRef:
+                  name: ai-secret
+                  key: MARIA_USER
             - name: MARIA_HOST
               valueFrom:
-                  secretKeyRef:
-                    name: ai-secret
-                    key: MARIA_HOST
+                secretKeyRef:
+                  name: ai-secret
+                  key: MARIA_HOST
             - name: MARIA_PORT
               valueFrom:
-                  secretKeyRef:
-                    name: ai-secret
-                    key: MARIA_PORT
+                secretKeyRef:
+                  name: ai-secret
+                  key: MARIA_PORT
             - name: MARIA_NAME
               valueFrom:
-                  secretKeyRef:
-                    name: ai-secret
-                    key: MARIA_NAME
+                secretKeyRef:
+                  name: ai-secret
+                  key: MARIA_NAME
             # api key 설정
             - name: OPENAI_API_KEY
               valueFrom:
