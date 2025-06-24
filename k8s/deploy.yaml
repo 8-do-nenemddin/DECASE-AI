@@ -13,7 +13,7 @@ spec:
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "8081"
-        prometheus.io/path: "/ai/api/v1/actuator/prometheus"
+        prometheus.io/path: "/health"
         update: 41ea7741d6ea2b0a77eb2c75861ae389
       labels:
         app: decase-ai
