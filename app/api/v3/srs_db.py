@@ -1,6 +1,5 @@
 import os
 import json
-import uuid
 import asyncio
 from typing import List
 
@@ -8,10 +7,10 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from concurrent.futures import ThreadPoolExecutor
 from pydantic import TypeAdapter, ValidationError
 
+from app.models.job import Job, JobNameEnum, JobStatusEnum
 from app.services.srs_services import srs_pipeline
 from app.schemas.requirement import SrsRequirementData
 from app.core.config import OUTPUT_UPLOADS_DIR, OUTPUT_SRS_DIR
-from app.api.v2.jobs import job_store, update_job_status
 from datetime import datetime
 from app.services.requirement_service import RequirementService
 from app.core.mysql_config import get_mysql_db
@@ -40,22 +39,34 @@ async def start_srs_analysis(
         raise HTTPException(status_code=400, detail="PDF 파일만 업로드 가능합니다.")
 
     try:
-        job_id = str(uuid.uuid4())
+        job_id = None
+
+        # DB에 Job 생성
+        async for db in get_mysql_db():
+            # 프로젝트, 멤버 조회 (존재 확인)
+            project = await db.scalar(select(Project).where(Project.project_id == project_id))
+            member = await db.scalar(select(Member).where(Member.member_id == member_id))
+            if not project or not member:
+                raise HTTPException(status_code=404, detail="프로젝트 또는 멤버를 찾을 수 없습니다.")
+
+            new_job = Job(
+                name=JobNameEnum.SRS,
+                project_id=project_id,
+                member_id=member_id,
+                revision_count=0,
+                start_time=datetime.now(),
+                end_time=None,
+                status=JobStatusEnum.PROCESSING
+            )
+            db.add(new_job)
+            await db.commit()
+            await db.refresh(new_job)
+            job_id = new_job.job_id
+            break
+        
         pdf_content = await file.read()
         
-        job_store[job_id] = {
-            "job_name": "SRS",
-            "status": "PROCESSING",
-            "message": "요구사항 분석을 시작합니다.",
-            "result": None,
-            "error": None,
-            "project_id": project_id,
-            "member_id": member_id,
-            "document_id": document_id,
-            "start_time": datetime.now().isoformat()
-        }
-        
-        asyncio.create_task(process_srs_background(pdf_content, job_id, file.filename))
+        asyncio.create_task(process_srs_background(pdf_content, job_id, file.filename, project_id, member_id, document_id))
         
         return {
             "job_id": job_id,
@@ -70,21 +81,16 @@ async def start_srs_analysis(
         error_message = f"요구사항 분석 시작 실패:\n{str(e)}\n\n상세 에러:\n{error_traceback}"
         print(error_message)
         
-        if 'job_id' in locals():
-            update_job_status(
-                job_id=job_id,
-                status="FAILED",
-                result=None,
-                error=error_message
-            )
+        if job_id is not None:
+            await update_job_status_in_db(job_id, JobStatusEnum.FAILED, error_message)
         raise HTTPException(
             status_code=500,
             detail=f"요구사항 분석 시작 실패: {str(e)}"
         )
 
 
-async def process_srs_background(pdf_content: bytes, job_id: str, original_filename: str):
-    """(개선) 백그라운드에서 임시 파일 없이 요구사항 분석 처리"""
+async def process_srs_background(pdf_content: bytes, job_id: str, original_filename: str, project_id: int, member_id: int, document_id: str):
+    """요구사항 분석 처리"""
     try:
         print(f"\n=== 백그라운드 작업 시작 (Job ID: {job_id}) ===")
         print("\n--- 에이전트 1 & 2: 요구사항 식별, 명명, 분류, 상세설명 작업 중 ---")
@@ -105,18 +111,32 @@ async def process_srs_background(pdf_content: bytes, job_id: str, original_filen
             raise Exception(error_message)
 
         # *** 변경점: 트랜잭션 관리가 포함된 배치 처리 함수 호출 ***
-        await save_requirements_to_db_batched(requirements_list, job_store[job_id])
-
-        update_job_status(job_id, status="COMPLETED", message="요구사항 명세서(SRS) 분석 및 저장이 완료되었습니다.")
+        await save_requirements_to_db_batched(requirements_list, project_id, member_id, document_id)
         
+        await update_job_status_in_db(job_id, JobStatusEnum.COMPLETED, "요구사항 명세서(SRS) 분석 및 저장이 완료되었습니다.")
+     
     except Exception as e:
         import traceback
         error_traceback = traceback.format_exc()
         error_message = f"요구사항 처리 중 오류 발생:\n{str(e)}\n\n상세 에러:\n{error_traceback}"
         print(error_message)
-        update_job_status(job_id=job_id, status="FAILED", error=error_message)
+        await update_job_status_in_db(job_id, JobStatusEnum.FAILED, error_message)
 
-async def save_requirements_to_db_batched(processed_results: List[SrsRequirementData], job_info):
+
+async def update_job_status_in_db(job_id: int, status: JobStatusEnum, message: str = None):
+    """Job 상태 업데이트"""
+    async for db in get_mysql_db():
+        job = await db.scalar(select(Job).where(Job.job_id == job_id))
+        if job:
+            job.status = status
+            if status in [JobStatusEnum.COMPLETED, JobStatusEnum.FAILED]:
+                job.end_time = datetime.now()
+            await db.commit()
+            await db.refresh(job)
+        break
+
+
+async def save_requirements_to_db_batched(processed_results: List[SrsRequirementData],  project_id, member_id, document_id):
     """
     (개선) 요구사항 리스트를 DB에 '배치'로 저장하고, 트랜잭션을 명시적으로 관리하는 함수
     """
@@ -125,13 +145,7 @@ async def save_requirements_to_db_batched(processed_results: List[SrsRequirement
     async for db in get_mysql_db():
         try:
             print(f"DB 연결 성공")
-            project_id = job_info.get("project_id")
-            member_id = job_info.get("member_id")
-            document_id = job_info.get("document_id")
-
-            if not all([project_id, member_id, document_id]):
-                raise Exception("프로젝트 ID, 멤버 ID, 문서 ID가 필요합니다.")
-
+            
             # --- 관련 엔티티 조회 (작업 시작 전 한번만) ---
             project = await db.scalar(select(Project).where(Project.project_id == project_id))
             member = await db.scalar(select(Member).where(Member.member_id == member_id))
