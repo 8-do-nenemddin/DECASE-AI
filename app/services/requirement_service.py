@@ -35,7 +35,9 @@ class RequirementService:
             deleted_revision=0,
             project_id=project.project_id,
             member_id=member.member_id,
-            mod_reason=""
+            mod_reason="",
+            project_id_aud=project.project_id,
+            modified_date=datetime.now()
         )
         self.db.add(requirement)
         await self.db.flush()

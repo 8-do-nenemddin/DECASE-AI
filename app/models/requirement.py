@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Enum
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Enum, BigInteger
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from enum import Enum as PyEnum
@@ -73,6 +73,8 @@ class Requirement(Base):
     created_date = Column(DateTime, nullable=False, default=datetime.now)
     is_deleted = Column(Boolean, default=False)
     deleted_revision = Column(Integer, nullable=False, default=0)
+    project_id_aud = Column(BigInteger, default=False)
+    modified_date = Column(DateTime, nullable=False, default=datetime.now)
     
     # Foreign Keys
     project_id = Column(Integer, ForeignKey('tm_projects.project_id'), nullable=False)
@@ -94,7 +96,7 @@ class Requirement(Base):
                                  level_1: str, level_2: str, level_3: str,
                                  name: str, description: str, priority: Priority,
                                  difficulty: Difficulty, created_date: datetime,
-                                 project_id: int, created_by_id: int):
+                                 project_id: int, created_by_id: int, project_id_aud: int):
         """요구사항 정의서 초기 생성시 생성되는 데이터"""
         self.req_id_code = req_id_code
         self.revision_count = 1
@@ -113,6 +115,8 @@ class Requirement(Base):
         self.member_id = created_by_id
         self.mod_reason = ""  # 초기 요구사항 정의서의 수정 이유는 비워둠
         self.sources = []
+        self.project_id_aud = project_id_aud
+        self.modified_date = datetime.now()
 
     def create_update_requirement(self, req_id_code: str, revision_count: int,
                                 mod_reason: str, type: RequirementType,
