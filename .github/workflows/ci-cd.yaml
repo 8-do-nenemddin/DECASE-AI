@@ -1,0 +1,139 @@
+# .github/workflows/ci-cd.yml
+name: AI CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  GIT_URL: "https://github.com/8-do-nenemddin/DECASE-AI.git"
+  GIT_BRANCH: "main"
+  IMAGE_NAME: "sk-team-08-decase-ai"
+  IMAGE_TAG: "1.0.0"
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Clone Repository
+        uses: actions/checkout@v4
+
+      - name: 🏷️ Generate Hash Code and Final Image Tag
+        id: tag
+        run: |
+          HASHCODE=$(date +%s%N | sha256sum | cut -c1-12)
+
+          FINAL_IMAGE_TAG="${{ env.IMAGE_TAG }}-${{ github.run_number }}-${HASHCODE}"
+
+          echo "Generated Hash Code: ${HASHCODE}"
+          echo "Final Image Tag: ${FINAL_IMAGE_TAG}"
+
+          echo "FINAL_IMAGE_TAG=${FINAL_IMAGE_TAG}" >> $GITHUB_OUTPUT
+          echo "HASHCODE=${HASHCODE}" >> $GITHUB_OUTPUT
+
+      - name: ✅ Verify Source Code
+        run: |
+          echo "📁 Checking source code structure..."
+          ls -la
+
+          echo "🔍 Checking main application file..."
+          if [ -f "main.py" ]; then
+            echo "✅ main.py found"
+            head -10 main.py
+          else
+            echo "⚠️ main.py not found, listing Python files:"
+            find . -name "*.py" | head -5
+          fi
+
+          echo "✅ Source code verification completed"
+
+      - name: 🔧 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🔐 Login to Docker Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.IMAGE_REGISTRY }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: 🏗️ Docker Build & Push
+        run: |
+          FINAL_TAG="${{ steps.tag.outputs.FINAL_IMAGE_TAG }}"
+          FULL_IMAGE_NAME="${{ secrets.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:${FINAL_TAG}"
+
+          echo "🐳 Building AI Backend Docker image: ${FULL_IMAGE_NAME}"
+          echo "📦 Using base image: amdp-registry.skala-ai.com/skala25a/decase-ai-base:1.0.0"
+
+          # Docker 빌드 (베이스 이미지 포함)
+          docker build --platform linux/amd64 -t "${FULL_IMAGE_NAME}" .
+
+          echo "📤 Pushing Docker image to registry..."
+          docker push "${FULL_IMAGE_NAME}"
+
+          echo "✅ AI Backend Docker image built and pushed successfully"
+          echo "📦 Final Image: ${FULL_IMAGE_NAME}"
+          echo "🔗 Base Image: amdp-registry.skala-ai.com/skala25a/decase-ai-base:1.0.0"
+
+      - name: 📝 Update deploy.yaml and Git Push
+        run: |
+          echo "📝 Updating deploy.yaml with new image..."
+
+          NEW_IMAGE_LINE="          image: ${{ secrets.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.FINAL_IMAGE_TAG }}"
+
+          echo "🔄 New image line: ${NEW_IMAGE_LINE}"
+
+          sed -i 's|^[[:space:]]*image:.*sk-team-08-decase-ai.*|'"${NEW_IMAGE_LINE}"'|g' ./k8s/deploy.yaml
+
+          # update annotation 업데이트 (ArgoCD 동기화용)
+          HASH=$(echo $RANDOM | md5sum | head -c 32)
+          sed -i "s|update: .*|update: ${HASH}|g" ./k8s/deploy.yaml
+
+          echo "📋 Updated deploy.yaml content:"
+          cat ./k8s/deploy.yaml
+
+      - name: 📤 Commit and Push Changes to Repository
+        run: |
+          echo "📤 Committing and pushing changes..."
+
+          # Secrets에서 Git 사용자 정보 가져오기
+          git config user.name "${{ secrets.GIT_USER_NAME }}"
+          git config user.email "${{ secrets.GIT_USER_EMAIL }}"
+
+          # deploy.yaml 파일을 스테이징 영역에 추가
+          git add ./k8s/deploy.yaml || true
+
+          # 변경사항이 있으면 커밋 및 푸시
+          if ! git diff --cached --quiet; then
+            echo "✅ Changes detected, committing..."
+            
+            # 커밋 메시지 (무한루프 방지용 [skip ci] 태그 포함)
+            git commit -m "[AUTO] Update AI deploy.yaml with image ${{ steps.tag.outputs.FINAL_IMAGE_TAG }} [skip ci]"
+            
+            echo "📤 Pushing to repository..."
+            git push origin ${{ env.GIT_BRANCH }}
+            
+            echo "✅ Successfully pushed manifest update to repository"
+          else
+            echo "ℹ️ No changes to commit."
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 📊 Pipeline Summary
+        run: |
+          echo "🎉 AI Backend CI/CD Pipeline Completed Successfully!"
+          echo ""
+          echo "📋 Pipeline Summary:"
+          echo "├── 🤖 AI Backend Image: ${{ secrets.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.FINAL_IMAGE_TAG }}"
+          echo "├── 🏷️ Hash Code: ${{ steps.tag.outputs.HASHCODE }}"
+          echo "├── 🔢 Build Number: ${{ github.run_number }}"
+          echo "├── 📝 Updated deploy.yaml with new image"
+          echo "├── 📤 Pushed changes to repository"
+          echo "└── 🔄 ArgoCD will automatically sync and deploy this change"
+          echo ""
+          echo "🌐 AI API will be available at: https://decase.skala25a.project.skala-ai.com/ai/api/v1"
+          echo "📊 ArgoCD Dashboard: Check your ArgoCD UI for deployment status"
