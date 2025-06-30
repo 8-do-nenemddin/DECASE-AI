@@ -56,6 +56,8 @@ reportlab = "^4.4.1"
 markdown-pdf = "^1.7"
 aiomysql = "^0.2.0"
 google-genai = "^1.21.0"
+greenlet = "^3.2.3"
+weasyprint = "^65.1"
 
 [build-system]
 requires = ["poetry-core"]

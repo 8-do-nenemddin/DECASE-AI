@@ -4,6 +4,7 @@ import csv
 import fitz # PyMuPDF
 import re
 import os
+import weasyprint
 from typing import List, Tuple, Optional, Dict, Any
 from io import BytesIO
 
@@ -279,6 +280,56 @@ def save_report_to_file(report_content: str, filename: str = "as_is_technical_re
         pdf_converter.save(filename)
     except Exception as e:
         print(f"\n🔥 파일 저장 중 오류 발생: {e}")
+
+def save_report(html_content: str, file_path: str):
+    """
+    주어진 HTML 콘텐츠를 파싱하여 깨끗한 HTML 파일과 PDF 파일로 저장합니다.
+    pyhtml2pdf 라이브러리를 사용하여 PDF를 생성합니다.
+    
+    Args:
+        html_content (str): 저장할 HTML 소스 코드 문자열 (AI가 생성한 마크다운 포함 가능).
+        file_path (str): 저장할 HTML 파일의 전체 경로 (예: "reports/as_is_report.html").
+                         PDF는 동일한 이름으로 확장자만 .pdf로 변경되어 저장됩니다.
+    """
+    # --- 1. AI 응답 파싱 (Markdown 코드 블록 제거) ---
+    try:
+        # 정규식을 사용해 ```html 과 ``` 사이의 내용만 정확히 추출
+        match = re.search(r"```html(.*)```", html_content, re.DOTALL)
+        if match:
+            # 매칭된 그룹의 첫 번째(실제 코드 부분)를 가져오고, 앞뒤 공백을 제거
+            clean_html = match.group(1).strip()
+            print("✅ 마크다운 파싱 완료.")
+        else:
+            # 마크다운 블록이 없는 경우, 그냥 원본 사용
+            clean_html = html_content.strip()
+            print("ℹ️ 마크다운 블록이 없어 원본 HTML을 사용합니다.")
+    except Exception as e:
+        print(f"🚨 파싱 중 오류 발생: {e}")
+        # 파싱에 실패하면 원본을 그대로 사용
+        clean_html = html_content
+
+    # --- 2. HTML 파일 저장 ---
+    try:
+        # 파일이 저장될 디렉토리가 없으면 생성
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        
+        # HTML 파일을 쓰기 모드('w')와 UTF-8 인코딩으로 저장
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(clean_html)
+        print(f"✅ HTML 보고서가 성공적으로 저장되었습니다: {file_path}")
+    except Exception as e:
+        print(f"🚨 HTML 파일 저장 실패: {e}")
+        return # HTML 저장 실패 시 함수 종료
+
+    # --- 3. PDF 파일 저장 ---
+    # 저장될 PDF 파일 경로 생성 (예: "reports/as_is_report.html" -> "reports/as_is_report.pdf")
+    pdf_path = os.path.splitext(file_path)[0] + ".pdf"
+    
+    try:
+        weasyprint.HTML(file_path).write_pdf(pdf_path)
+        print(f"✅ PDF 보고서가 성공적으로 저장되었습니다: {pdf_path}")
+    except Exception as e:
+        print(f"🚨 PDF 변환 실패: {e}")
 
 def create_chunks(data: List, chunk_size: int) -> List[List]:
     """리스트를 주어진 크기의 청크로 나눕니다."""
