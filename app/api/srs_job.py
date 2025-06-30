@@ -26,7 +26,7 @@ async def get_srs_status(job_id: str):
 async def get_latest_srs_status_by_project_member(
     project_id: int,
     member_id: int,
-    job_name: str = "SRS"
+    job_name: str
 ):
     """
     project_id, member_id, job_name으로 가장 최신 SRS 분석 작업의 상태와 job_id 반환
