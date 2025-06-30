@@ -61,22 +61,29 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: 🏗️ Docker Build & Push
-        run: |
-          FINAL_TAG="${{ steps.tag.outputs.FINAL_IMAGE_TAG }}"
-          FULL_IMAGE_NAME="${{ secrets.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:${FINAL_TAG}"
-
-          echo "🐳 Building AI Backend Docker image: ${FULL_IMAGE_NAME}"
-          echo "📦 Using base image: amdp-registry.skala-ai.com/skala25a/decase-ai-base:1.0.0"
-
-          # Docker 빌드 (베이스 이미지 포함)
-          docker build --platform linux/amd64 -t "${FULL_IMAGE_NAME}" .
-
-          echo "📤 Pushing Docker image to registry..."
-          docker push "${FULL_IMAGE_NAME}"
-
-          echo "✅ AI Backend Docker image built and pushed successfully"
-          echo "📦 Final Image: ${FULL_IMAGE_NAME}"
-          echo "🔗 Base Image: amdp-registry.skala-ai.com/skala25a/decase-ai-base:1.0.0"
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ secrets.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.FINAL_IMAGE_TAG }}
+            ${{ secrets.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          cache-from: |
+            type=gha
+            type=registry,ref=${{ secrets.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:cache
+          cache-to: |
+            type=gha,mode=max
+            type=registry,ref=${{ secrets.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:cache,mode=max
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+            PYTHON_ENV=production
+          labels: |
+            org.opencontainers.image.title=DECASE AI Backend
+            org.opencontainers.image.description=AI-powered backend service
+            org.opencontainers.image.version=${{ steps.tag.outputs.FINAL_IMAGE_TAG }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+            org.opencontainers.image.revision=${{ github.sha }}
 
       - name: 📝 Update deploy.yaml and Git Push
         run: |
