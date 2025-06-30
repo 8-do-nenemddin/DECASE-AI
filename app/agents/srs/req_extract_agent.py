@@ -7,7 +7,7 @@ from typing import Any, Dict, List
 
 from app.core.config import GEMINI_MODEL
 
-def extract_requirements(client:genai.Client, pdf_file_content: bytes) -> List[Dict[str, Any]]:
+def extract_requirements(client:genai.Client, uploaded_file: Any) -> List[Dict[str, Any]]:
     """
     [1단계] PDF에서 최소 단위 요구사항을 식별, 분해, 통합하고 기본 분류하며 상세 설명을 생성합니다.
     """
@@ -95,7 +95,7 @@ def extract_requirements(client:genai.Client, pdf_file_content: bytes) -> List[D
         response = client.models.generate_content(
             model=GEMINI_MODEL,
             contents=[types.Part.from_bytes(
-                data=pdf_file_content,
+                data=uploaded_file,
                 mime_type="application/pdf",
             ),
             prompt],
