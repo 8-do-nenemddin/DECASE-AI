@@ -7,15 +7,12 @@ from typing import Any, Dict, List
 
 from app.core.config import GEMINI_MODEL
 
-def extract_requirements(client:genai.Client, pdf_file_path: Path) -> List[Dict[str, Any]]:
+def extract_requirements(client:genai.Client, pdf_file_content: bytes) -> List[Dict[str, Any]]:
     """
     [1단계] PDF에서 최소 단위 요구사항을 식별, 분해, 통합하고 기본 분류하며 상세 설명을 생성합니다.
     """
     print("\n🚀 1단계: 요구사항 식별, 분해 및 상세 설명 생성을 시작합니다...")
     
-    rfp_file = client.files.upload(
-        file=pdf_file_path,
-        )
     prompt = """
     <prompt>
         <persona>
@@ -95,15 +92,13 @@ def extract_requirements(client:genai.Client, pdf_file_path: Path) -> List[Dict[
     </prompt>
     """
     try:
-        response_token = client.models.count_tokens(
-            model=GEMINI_MODEL,
-            contents=[rfp_file, prompt]
-        )
-        print("요청 토큰 :", response_token)
-
         response = client.models.generate_content(
             model=GEMINI_MODEL,
-            contents=[rfp_file, prompt],
+            contents=[types.Part.from_bytes(
+                data=pdf_file_content,
+                mime_type="application/pdf",
+            ),
+            prompt],
             config={
                 "response_mime_type": "application/json",
                 "temperature": 0.0,
