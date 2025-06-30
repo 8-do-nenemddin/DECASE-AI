@@ -4,7 +4,7 @@ from app.api import mockup as mockup_router
 from app.api import faiss as faiss_router
 from app.api import request as request_router
 from app.api import srs_job as srs_job_router
-from app.api import srs as srs_router # process.py에서 정의한 라우터 임포트
+from app.api import srs as srs_router
 from app.api import asis as asis_router
 
 app = FastAPI(
