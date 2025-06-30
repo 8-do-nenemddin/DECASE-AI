@@ -1,10 +1,71 @@
+import asyncio
+import httpx
+
 from pathlib import Path
 from google import genai
+from datetime import datetime
+from urllib.parse import quote
 
+from app.models.job import JobStatusEnum
+from app.api.srs import update_job_status_in_db
+from app.core.config import OUTPUT_ASIS_DIR
 from app.agents.asis.asis_extract_agent import extract_as_is_facts
 from app.agents.asis.report_generate_agent import generate_as_is_report
 from app.services.file_processing_service import save_report
 from app.core.config import GOOGLE_API_KEY
+
+async def process_as_is_background(pdf_content: bytes, job_id: int, project_id: int, member_id: int, callback_url: str):
+    """백그라운드에서 As-Is 분석 파이프라인을 처리하고 콜백으로 결과를 전송합니다."""
+    try:
+        # 임시 파일 저장 경로 생성
+        upload_dir = Path(OUTPUT_ASIS_DIR)
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"ASIS_REPORT_{project_id}_{timestamp}.pdf"
+        output_pdf_path = upload_dir / filename
+
+        # 2. 분석 함수를 호출하여 파일 저장 및 바이트 반환을 동시에 수행
+        print(f"Job[{job_id}]: 백그라운드 분석/저장 시작...")
+        result_pdf_bytes = await asyncio.to_thread(
+            asis_pipeline,
+            pdf_content,
+            output_pdf_path  # 생성한 파일 경로 전달
+        )
+
+        # 분석 파이프라인 실패 시 처리
+        if result_pdf_bytes is None:
+            print(f"Job[{job_id}]: asis_pipeline에서 PDF를 생성하지 못했습니다.")
+            await update_job_status_in_db(job_id, JobStatusEnum.FAILED, "As-Is 분석 보고서 생성에 실패했습니다.")
+            return
+
+        # 3. 콜백 전송
+        encoded_filename = quote(filename.encode('utf-8'))
+        print(f"Job[{job_id}]: 콜백 URL로 PDF 파일 전송 시작: {callback_url}")
+
+        async with httpx.AsyncClient() as client:
+            files = {
+                "file": (encoded_filename, result_pdf_bytes, "application/pdf"),
+            }
+            data = {
+                "project_id": str(project_id),
+                "member_id": str(member_id),
+                "filename": filename,
+                "status": "COMPLETED",
+            }
+
+            try:
+                response = await client.post(callback_url, data=data, files=files, timeout=60)
+                print(f"Job[{job_id}]: 콜백 요청 완료. 응답 코드: {response.status_code}")
+                # 4. Job 완료 상태 업데이트
+                await update_job_status_in_db(job_id, JobStatusEnum.COMPLETED, "As-Is 분석 및 콜백 전송이 완료되었습니다.")
+            except httpx.RequestError as e:
+                print(f"Job[{job_id}]: 콜백 요청 실패: {e}")
+                await update_job_status_in_db(job_id, JobStatusEnum.FAILED, f"콜백 전송 실패: {e}")
+
+    except Exception as e:
+        print(f"Job[{job_id}]: 처리 중 오류 발생 - {e}")
+        await update_job_status_in_db(job_id, JobStatusEnum.FAILED, f"As-Is 분석 실패: {e}")
+
 
 def asis_pipeline(pdf_content_bytes: bytes, output_pdf_path: Path) -> bytes | None:
     """

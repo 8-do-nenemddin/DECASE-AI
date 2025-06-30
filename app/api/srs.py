@@ -9,7 +9,6 @@ from concurrent.futures import ThreadPoolExecutor
 from pydantic import TypeAdapter, ValidationError
 
 from app.models.job import Job, JobNameEnum, JobStatusEnum
-from app.services.srs_services import srs_pipeline
 from app.schemas.requirement import SrsRequirementData
 from app.core.config import OUTPUT_UPLOADS_DIR, OUTPUT_SRS_DIR
 from datetime import datetime
@@ -17,6 +16,7 @@ from app.services.requirement_service import RequirementService
 from app.core.mysql_config import get_mysql_db
 from app.models import Document, Member, Project
 from sqlalchemy import select
+from app.services.srs_services import update_job_status_in_db, process_srs_background, srs_pipeline
 
 router = APIRouter()
 
@@ -89,65 +89,3 @@ async def start_srs_analysis(
             status_code=500,
             detail=f"요구사항 분석 시작 실패: {str(e)}"
         )
-
-
-async def process_srs_background(pdf_content: bytes, job_id: str, original_filename: str, project_id: int, member_id: int, document_id: str, callback_url: str):
-    """요구사항 분석 처리"""
-    try:
-        print(f"\n=== 백그라운드 작업 시작 (Job ID: {job_id}) ===")
-        print("\n--- 에이전트 1 & 2: 요구사항 식별, 명명, 분류, 상세설명 작업 중 ---")
-        
-        final_json_output = await asyncio.to_thread(
-            srs_pipeline,
-            pdf_content_bytes=pdf_content,
-            output_path=os.path.join(OUTPUT_SRS_DIR, f"{job_id}_{original_filename}_requirements.json"),
-        )
-        
-        print("\n=== 요구사항 명세서(SRS) 생성 완료 ===")
-        # json 파일 파싱
-        requirements_list = json.loads(final_json_output.decode('utf-8') if isinstance(final_json_output, bytes) else final_json_output)
-
-        # 요구사항 명세서(SRS) 생성 완료 후 콜백 전송
-        async with httpx.AsyncClient() as client:
-            data = {
-                "project_id": project_id,
-                "member_id": member_id,
-                "document_id": document_id,
-                "status": "COMPLETED",
-                "srs": requirements_list
-            }
-
-            try:
-                response = await client.post(callback_url, json=data, timeout=60)
-                print(f"Job[{job_id}]: 콜백 요청 완료. 응답 코드: {response.status_code}")
-                if response.status_code != 200:
-                    raise Exception(f"콜백 요청 실패: 응답 코드 {response.status_code}, 응답 내용: {response.text}")
-                # 4. Job 완료 상태 업데이트
-                await update_job_status_in_db(job_id, JobStatusEnum.COMPLETED, "요구사항 명세서(SRS) 생성 및 콜백 전송이 완료되었습니다.")
-            except httpx.RequestError as e:
-                print(f"Job[{job_id}]: 콜백 요청 실패: {e}")
-                await update_job_status_in_db(job_id, JobStatusEnum.FAILED, f"콜백 전송 실패: {e}")
-            except Exception as e:
-                print(f"Job[{job_id}]: 콜백 요청 실패: {e}")
-                await update_job_status_in_db(job_id, JobStatusEnum.FAILED, f"콜백 전송 실패: {e}")
-     
-    except Exception as e:
-        import traceback
-        error_traceback = traceback.format_exc()
-        error_message = f"요구사항 처리 중 오류 발생:\n{str(e)}\n\n상세 에러:\n{error_traceback}"
-        print(error_message)
-        await update_job_status_in_db(job_id, JobStatusEnum.FAILED, error_message)
-
-
-async def update_job_status_in_db(job_id: int, status: JobStatusEnum, message: str = None):
-    """Job 상태 업데이트"""
-    async for db in get_mysql_db():
-        job = await db.scalar(select(Job).where(Job.job_id == job_id))
-        if job:
-            job.status = status
-            if status in [JobStatusEnum.COMPLETED, JobStatusEnum.FAILED]:
-                job.end_time = datetime.now()
-            await db.commit()
-            await db.refresh(job)
-        break
-
