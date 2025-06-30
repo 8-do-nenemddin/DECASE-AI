@@ -4,7 +4,7 @@ import json
 import uuid
 from typing import Optional
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Form, UploadFile, File
-from app.schemas.request import ProcessMeetingRequest, ProcessMeetingResponse, ChangeRequestResultItem
+from app.schemas.request import ProcessMeetingResponse, ChangeRequestResultItem
 from app.services.change_request_service import process_meeting_for_change_requests, summarize_and_save_meeting
 from app.core.config import FAISS_INDEX_DIR, METADATA_STORAGE_DIR, OUTPUT_UPLOADS_DIR   
 
