@@ -2,6 +2,7 @@ import os
 import json
 import asyncio
 from typing import List
+import httpx
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from concurrent.futures import ThreadPoolExecutor
@@ -30,7 +31,8 @@ async def start_srs_analysis(
     file: UploadFile = File(..., description="분석할 RFP PDF 파일"),
     project_id: int = Form(None, description="프로젝트 ID"),
     member_id: int = Form(None, description="멤버 ID"),
-    document_id: str = Form(None, description="문서 ID")
+    document_id: str = Form(None, description="문서 ID"),
+    callback_url: str = Form(None, description="콜백 URL")
 ):
     """
     요구사항 분석 작업 시작 - Job ID 반환
@@ -66,7 +68,7 @@ async def start_srs_analysis(
         
         pdf_content = await file.read()
         
-        asyncio.create_task(process_srs_background(pdf_content, job_id, file.filename, project_id, member_id, document_id))
+        asyncio.create_task(process_srs_background(pdf_content, job_id, file.filename, project_id, member_id, document_id, callback_url))
         
         return {
             "job_id": job_id,
@@ -89,7 +91,7 @@ async def start_srs_analysis(
         )
 
 
-async def process_srs_background(pdf_content: bytes, job_id: str, original_filename: str, project_id: int, member_id: int, document_id: str):
+async def process_srs_background(pdf_content: bytes, job_id: str, original_filename: str, project_id: int, member_id: int, document_id: str, callback_url: str):
     """요구사항 분석 처리"""
     try:
         print(f"\n=== 백그라운드 작업 시작 (Job ID: {job_id}) ===")
@@ -101,19 +103,33 @@ async def process_srs_background(pdf_content: bytes, job_id: str, original_filen
             output_path=os.path.join(OUTPUT_SRS_DIR, f"{job_id}_{original_filename}_requirements.json"),
         )
         
-        print("\n=== 요구사항 저장 프로세스 시작 ===")
-        
-        try:
-            requirements_list = TypeAdapter(List[SrsRequirementData]).validate_python(json.loads(final_json_output))
-        except (json.JSONDecodeError, ValidationError) as e:
-            error_message = f"SRS 파이프라인 결과 파싱 오류: {e}"
-            print(error_message)
-            raise Exception(error_message)
+        print("\n=== 요구사항 명세서(SRS) 생성 완료 ===")
+        # json 파일 파싱
+        requirements_list = json.loads(final_json_output.decode('utf-8') if isinstance(final_json_output, bytes) else final_json_output)
 
-        # *** 변경점: 트랜잭션 관리가 포함된 배치 처리 함수 호출 ***
-        await save_requirements_to_db_batched(requirements_list, project_id, member_id, document_id)
-        
-        await update_job_status_in_db(job_id, JobStatusEnum.COMPLETED, "요구사항 명세서(SRS) 분석 및 저장이 완료되었습니다.")
+        # 요구사항 명세서(SRS) 생성 완료 후 콜백 전송
+        async with httpx.AsyncClient() as client:
+            data = {
+                "project_id": project_id,
+                "member_id": member_id,
+                "document_id": document_id,
+                "status": "COMPLETED",
+                "srs": requirements_list
+            }
+
+            try:
+                response = await client.post(callback_url, json=data, timeout=60)
+                print(f"Job[{job_id}]: 콜백 요청 완료. 응답 코드: {response.status_code}")
+                if response.status_code != 200:
+                    raise Exception(f"콜백 요청 실패: 응답 코드 {response.status_code}, 응답 내용: {response.text}")
+                # 4. Job 완료 상태 업데이트
+                await update_job_status_in_db(job_id, JobStatusEnum.COMPLETED, "요구사항 명세서(SRS) 생성 및 콜백 전송이 완료되었습니다.")
+            except httpx.RequestError as e:
+                print(f"Job[{job_id}]: 콜백 요청 실패: {e}")
+                await update_job_status_in_db(job_id, JobStatusEnum.FAILED, f"콜백 전송 실패: {e}")
+            except Exception as e:
+                print(f"Job[{job_id}]: 콜백 요청 실패: {e}")
+                await update_job_status_in_db(job_id, JobStatusEnum.FAILED, f"콜백 전송 실패: {e}")
      
     except Exception as e:
         import traceback
@@ -135,47 +151,3 @@ async def update_job_status_in_db(job_id: int, status: JobStatusEnum, message: s
             await db.refresh(job)
         break
 
-
-async def save_requirements_to_db_batched(processed_results: List[SrsRequirementData],  project_id, member_id, document_id):
-    """
-    (개선) 요구사항 리스트를 DB에 '배치'로 저장하고, 트랜잭션을 명시적으로 관리하는 함수
-    """
-    BATCH_SIZE = 100 
-
-    async for db in get_mysql_db():
-        try:
-            print(f"DB 연결 성공")
-            
-            # --- 관련 엔티티 조회 (작업 시작 전 한번만) ---
-            project = await db.scalar(select(Project).where(Project.project_id == project_id))
-            member = await db.scalar(select(Member).where(Member.member_id == member_id))
-            document = await db.scalar(select(Document).where(Document.doc_id == document_id))
-
-            if not all([project, member, document]):
-                raise Exception(f"프로젝트, 멤버, 또는 문서를 찾을 수 없습니다. (P:{project_id}, M:{member_id}, D:{document_id})")
-
-            requirement_service = RequirementService(db)
-            total_count = len(processed_results)
-            print(f"\n=== 총 {total_count}개의 요구사항 저장 시작 (배치 크기: {BATCH_SIZE}) ===")
-
-            # --- 배치 처리를 위한 루프 ---
-            for i in range(0, total_count, BATCH_SIZE):
-                batch = processed_results[i:i + BATCH_SIZE]
-                print(f"\n--- 배치 {i//BATCH_SIZE + 1} 처리 중 ({i+1} ~ {min(i + BATCH_SIZE, total_count)}번 항목) ---")
-                
-                # 배치 내의 모든 요구사항을 순차적으로 서비스에 전달
-                for idx, requirement in enumerate(batch, i + 1):
-                    await requirement_service.create_requirement(requirement, member, project, document)
-                
-                await db.commit()
-                print(f"--- 배치 {i//BATCH_SIZE + 1} 커밋 완료 ---")
-
-            print("\n=== 모든 요구사항 저장 완료 ===")
-
-        except Exception as e:
-            print(f"!!! 에러 발생: 트랜잭션을 롤백합니다. 원인: {e}")
-            await db.rollback()
-            raise 
-        finally:
-            print("DB 세션 리소스 정리 완료")
-            break

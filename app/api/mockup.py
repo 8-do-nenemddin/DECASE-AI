@@ -14,7 +14,7 @@ import json
 from typing import Dict, Any
 import httpx
 from fastapi import BackgroundTasks
-from app.api.v3.srs_db import thread_pool
+from app.api.srs import thread_pool
 from app.core.mysql_config import get_mysql_db
 
 router = APIRouter()

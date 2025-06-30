@@ -1,5 +1,4 @@
 import asyncio
-import uuid
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import quote
@@ -9,7 +8,7 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, Form
 from sqlalchemy import select
 from sqlalchemy.orm import relationship
 
-from app.api.v3.srs_db import update_job_status_in_db
+from app.api.srs import update_job_status_in_db
 from app.core.config import OUTPUT_ASIS_DIR
 
 from app.models.job import Job, JobNameEnum, JobStatusEnum

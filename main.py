@@ -1,12 +1,12 @@
 # app/main.py
 from fastapi import FastAPI
-from app.api.v1 import mockup as mockup_router
-from app.api.v1 import faiss as faiss_router
-from app.api.v1 import request as request_router
-from app.api.v3 import asis_job as asis_job_router
-from app.api.v3 import srs_job as srs_job_router
-from app.api.v3 import srs_db as srs_router # process.py에서 정의한 라우터 임포트
-from app.api.v3 import asis_db as asis_router
+from app.api import mockup as mockup_router
+from app.api import faiss as faiss_router
+from app.api import request as request_router
+from app.api import srs_job as srs_job_router
+from app.api import srs as srs_router # process.py에서 정의한 라우터 임포트
+from app.api import asis as asis_router
+from prometheus_fastapi_instrumentator import Instrumentator
 
 app = FastAPI(
     title="RFP Analysis Service",
@@ -21,7 +21,6 @@ app.include_router(asis_router.router, prefix="/requirements", tags=["As-Is"])
 app.include_router(mockup_router.router, prefix="/mockup", tags=["Mockup"]) # 추가
 app.include_router(faiss_router.router, prefix="/faiss", tags=["FAISS-Indexing"]) # 새 라우터 추가
 app.include_router(request_router.router, prefix="/request", tags=["Update Request"]) # 새 라우터 추가
-app.include_router(asis_job_router.router, prefix="/jobs", tags=["As-Is"])  # AS-IS 분석 작업 상태 확인 라우터
 app.include_router(srs_job_router.router, prefix="/jobs", tags=["SRS"])  # SRS 분석 작업 상태 확인 라우터
 
 @app.get("/")
