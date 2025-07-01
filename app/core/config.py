@@ -18,6 +18,7 @@ OUTPUT_UPLOADS_DIR = os.getenv("FILE_STORAGE_PATH_UPLOADS", "app/output/docs")
 OUTPUT_SRS_DIR = os.getenv("FILE_STORAGE_PATH_SRS", "app/output/srs_result")
 OUTPUT_ASIS_DIR = os.getenv("FILE_STORAGE_PATH_ASIS", "app/output/asis_result")
 OUTPUT_MOCKUP_DIR = os.getenv("FILE_STORAGE_PATH_MOCKUP", "app/output/mockup_result")
+OUTPUT_UPDATE_DIR = os.getenv("FILE_STORAGE_PATH_UPDATE", "app/output/update_result")
 
 SENTENCE_TRANSFORMER_MODEL = os.getenv("SENTENCE_TRANSFORMER_MODEL", "all-MiniLM-L6-v2")
 

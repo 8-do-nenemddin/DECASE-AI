@@ -7,7 +7,7 @@ from datetime import datetime
 from urllib.parse import quote
 
 from app.models.job import JobStatusEnum
-from app.api.srs import update_job_status_in_db
+from app.services.job_services import update_job_status_in_db
 from app.core.config import OUTPUT_ASIS_DIR
 from app.agents.asis.asis_extract_agent import extract_as_is_facts
 from app.agents.asis.report_generate_agent import generate_as_is_report

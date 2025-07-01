@@ -1,7 +1,7 @@
 # app/main.py
 from fastapi import FastAPI
 from app.api import mockup as mockup_router
-from app.api import request as request_router
+from app.api import update as update_router
 from app.api import srs_job as srs_job_router
 from app.api import srs as srs_router
 from app.api import asis as asis_router
@@ -17,7 +17,7 @@ app = FastAPI(
 app.include_router(srs_router.router, prefix="/requirements", tags=["SRS"])
 app.include_router(asis_router.router, prefix="/requirements", tags=["As-Is"]) 
 app.include_router(mockup_router.router, prefix="/mockup", tags=["Mockup"]) # 추가
-app.include_router(request_router.router, prefix="/request", tags=["Update Request"]) # 새 라우터 추가
+app.include_router(update_router.router, prefix="/request", tags=["Update Request"]) # 새 라우터 추가
 app.include_router(srs_job_router.router, prefix="/jobs", tags=["SRS"])  # SRS 분석 작업 상태 확인 라우터
 
 @app.get("/")

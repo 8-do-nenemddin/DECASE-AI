@@ -37,31 +37,31 @@ async def start_as_is_analysis(
         pdf_content = await file.read()
 
         # DB에 Job 생성
-        async for db in get_mysql_db():
-            project = await db.scalar(select(Project).where(Project.project_id == project_id))
-            member = await db.scalar(select(Member).where(Member.member_id == member_id))
-            if not project or not member:
-                raise HTTPException(status_code=404, detail="프로젝트 또는 멤버를 찾을 수 없습니다.")
+        # async for db in get_mysql_db():
+        #     project = await db.scalar(select(Project).where(Project.project_id == project_id))
+        #     member = await db.scalar(select(Member).where(Member.member_id == member_id))
+        #     if not project or not member:
+        #         raise HTTPException(status_code=404, detail="프로젝트 또는 멤버를 찾을 수 없습니다.")
 
-            new_job = Job(
-                name=JobNameEnum.ASIS,
-                project_id=project_id,
-                member_id=member_id,
-                revision_count=0,
-                start_time=datetime.now(),
-                end_time=None,
-                status=JobStatusEnum.PROCESSING
-            )
-            db.add(new_job)
-            await db.commit()
-            await db.refresh(new_job)
-            job_id = new_job.job_id
-            break
+        #     new_job = Job(
+        #         name=JobNameEnum.ASIS,
+        #         project_id=project_id,
+        #         member_id=member_id,
+        #         revision_count=0,
+        #         start_time=datetime.now(),
+        #         end_time=None,
+        #         status=JobStatusEnum.PROCESSING
+        #     )
+        #     db.add(new_job)
+        #     await db.commit()
+        #     await db.refresh(new_job)
+        #     job_id = new_job.job_id
+        #     break
 
         asyncio.create_task(process_as_is_background(pdf_content, job_id, project_id, member_id, callback_url))
         
         return {
-            "job_id": job_id,
+            # "job_id": job_id,
             "status": "PROCESSING",
             "message": "As-Is 분석 작업이 시작되었습니다. Job ID로 상태를 확인하세요."
         }
