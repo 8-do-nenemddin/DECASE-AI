@@ -41,6 +41,7 @@ def analyze_requirement_changes(
     3.  **엄격한 스키마 준수**: 반드시 아래에 명시된 스키마와 필드명을 가진 단일 JSON 객체로만 응답해야 합니다. 모든 필드명은 **스네이크 케이스(snake_case)**를 사용해야 합니다.
     4.  **`to_add` 지침**: 새로운 요구사항을 생성합니다. 모든 필드를 채워야 합니다.
         - `target_page`: 요구사항 설명에 기반하여 관련된 UI 페이지나 기능을 명시합니다. (예: "로그인 페이지")
+        - `type`: 유형은 "기능", "비기능" 중 하나로 설정합니다.
         - `importance`: 중요도는 "HIGH", "MIDDLE", "LOW" 중 하나로 설정합니다.
         - `difficulty`: 난이도는 "HIGH", "MIDDLE", "LOW" 중 하나로 설정합니다.
     5.  **`to_update` 지침**: **매우 중요합니다.** 수정이 필요한 요구사항의 **전체 필드를 모두 포함**해야 합니다.
@@ -48,6 +49,7 @@ def analyze_requirement_changes(
         - 회의록 내용에 따라 변경이 필요한 필드의 값만 수정합니다.
         - **수정되지 않은 필드들은 반드시 기존 요구사항의 값을 그대로 채워 넣습니다.**
         - `modified_reason` 필드에 수정 사유를 반드시 작성합니다.
+        - 사유는 '회의록에 따라' 라는 문구로 시작합니다.
     6.  **`to_delete` 지침**: 삭제할 요구사항의 `requirement_id`와 삭제 사유(`modified_reason`)만 포함합니다.
 
     ```json
@@ -56,7 +58,7 @@ def analyze_requirement_changes(
         {{
           "requirement_id": "SYS-FR-0001",
           "requirement_name": "소셜 로그인 기능",
-          "type": "FR",
+          "type": "기능",
           "description": "사용자가 카카오, 구글 등 소셜 계정을 이용하여 간편하게 로그인하거나 회원가입하는 기능을 제공합니다.",
           "target_page": "로그인, 회원가입 페이지",
           "level1": "사용자 관리",
@@ -71,7 +73,7 @@ def analyze_requirement_changes(
         {{
           "requirement_id": "CMS-FR-0002",
           "requirement_name": "게시물 목록 조회 기능",
-          "type": "FR",
+          "type": "기능",
           "description": "작성된 게시물 목록을 페이지네이션과 함께 조회하는 기능을 구현합니다. 정렬 옵션으로 최신순과 인기순(조회수 기준)을 제공합니다.",
           "target_page": "게시판",
           "level1": "콘텐츠 관리",

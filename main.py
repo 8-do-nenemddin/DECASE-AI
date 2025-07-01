@@ -17,7 +17,7 @@ app = FastAPI(
 app.include_router(srs_router.router, prefix="/requirements", tags=["SRS"])
 app.include_router(asis_router.router, prefix="/requirements", tags=["As-Is"]) 
 app.include_router(mockup_router.router, prefix="/mockup", tags=["Mockup"]) # 추가
-app.include_router(update_router.router, prefix="/request", tags=["Update Request"]) # 새 라우터 추가
+app.include_router(update_router.router, prefix="/requirements", tags=["Update Request"]) # 새 라우터 추가
 app.include_router(srs_job_router.router, prefix="/jobs", tags=["SRS"])  # SRS 분석 작업 상태 확인 라우터
 app.include_router(screen_spec_router.router, prefix="/specs", tags=["Screen Specs"])  # 화면 설계서 생성 라우터
 
