@@ -5,7 +5,7 @@ from app.api import update as update_router
 from app.api import srs_job as srs_job_router
 from app.api import srs as srs_router
 from app.api import asis as asis_router
-
+from app.api import screen_spec as screen_spec_router
 app = FastAPI(
     title="RFP Analysis Service",
     description="RFP 문서를 분석하여 요구사항을 분류, 평가하고 SRS 문서를 생성하는 API",
@@ -19,6 +19,7 @@ app.include_router(asis_router.router, prefix="/requirements", tags=["As-Is"])
 app.include_router(mockup_router.router, prefix="/mockup", tags=["Mockup"]) # 추가
 app.include_router(update_router.router, prefix="/requirements", tags=["Update Request"]) # 새 라우터 추가
 app.include_router(srs_job_router.router, prefix="/jobs", tags=["SRS"])  # SRS 분석 작업 상태 확인 라우터
+app.include_router(screen_spec_router.router, prefix="/specs", tags=["Screen Specs"])  # 화면 설계서 생성 라우터
 
 @app.get("/")
 async def root():
