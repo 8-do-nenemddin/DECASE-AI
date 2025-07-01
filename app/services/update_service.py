@@ -43,6 +43,10 @@ async def process_update_background(
     """
     백그라운드에서 요구사항 분석, DB 상태 업데이트, 콜백 전송까지 모두 처리합니다.
     """
+    status = "COMPLETED"
+    changes = None
+    error_message = None
+    
     try:
         # 1. 데이터 준비
         # Pydantic 모델 리스트를 Gemini Agent가 사용할 딕셔너리 리스트로 변환
@@ -61,51 +65,51 @@ async def process_update_background(
 
         print(f"-> Job ID {request.job_id}: 변경사항 분석 완료.")
 
-        # 3. DB 상태 'COMPLETED'로 업데이트
-        await update_job_status_in_db(request.job_id, JobStatusEnum.COMPLETED)
-        print(f"-> Job ID {request.job_id}: DB 상태를 COMPLETED로 업데이트했습니다.")
-
-        # 4. 성공 콜백 전송
-        if request.callback_url:
-            print(f"\n--- Job ID {request.job_id}: 성공 콜백 전송 -> {request.callback_url} ---")
-            async with httpx.AsyncClient() as http_client:
-                success_data = {
-                    "job_id": request.job_id,
-                    "project_id": request.project_id,
-                    "member_id": request.member_id,
-                    "document_id": request.document_id,
-                    "status": "COMPLETED",
-                    "changes": changes,
-                }
-                response = await http_client.post(request.callback_url, json=success_data, timeout=60)
-                print(f"-> Job ID {request.job_id}: 성공 콜백 응답 코드: {response.status_code}")
-                response.raise_for_status()
-
     except Exception as e:
-        # --- 전체 프로세스 중 어디서든 오류 발생 시 실행 ---
+        # --- 분석 작업 중 오류 발생 시 실행 ---
         error_traceback = traceback.format_exc()
         error_message = f"분석 작업 중 오류 발생 (Job ID: {request.job_id}):\n{str(e)}"
         print(f"\n❌ {error_message}\n{error_traceback}")
+        status = "FAILED"
 
-        # 5. DB 상태 'FAILED'로 업데이트
-        # job_id가 있으므로 항상 DB 업데이트 시도
-        await update_job_status_in_db(request.job_id, JobStatusEnum.FAILED)
-        print(f"-> Job ID {request.job_id}: DB 상태를 FAILED로 업데이트했습니다.")
+    finally:
+        # 3. DB 상태 업데이트 (성공/실패에 따라)
+        if status == "COMPLETED":
+            await update_job_status_in_db(request.job_id, JobStatusEnum.COMPLETED)
+            print(f"-> Job ID {request.job_id}: DB 상태를 COMPLETED로 업데이트했습니다.")
+        else:
+            await update_job_status_in_db(request.job_id, JobStatusEnum.FAILED)
+            print(f"-> Job ID {request.job_id}: DB 상태를 FAILED로 업데이트했습니다.")
 
-        # 6. 실패 콜백 전송
+        # 4. 콜백 전송 
         if request.callback_url:
-            print(f"\n--- Job ID {request.job_id}: 실패 콜백 전송 -> {request.callback_url} ---")
+            print(f"\n--- Job ID {request.job_id}: 콜백 전송 -> {request.callback_url} ---")
             async with httpx.AsyncClient() as http_client:
-                failure_data = {
-                    "job_id": request.job_id,
-                    "project_id": request.project_id,
-                    "member_id": request.member_id,
-                    "document_id": request.document_id,
-                    "status": "FAILED",
-                    "error": str(e)
-                }
+                headers = {"Content-Type": "application/json"}
+                callback_data = {
+                        "projectId": request.project_id,
+                        "jobId": request.job_id,
+                        "memberId": request.member_id,
+                        "documentId": request.document_id,
+                        "status": status,
+                        "changes": changes
+                    }
+                
                 try:
-                    response = await http_client.post(request.callback_url, json=failure_data, timeout=60)
-                    print(f"-> Job ID {request.job_id}: 실패 콜백 응답 코드: {response.status_code}")
+                    print(f"-> Job ID {request.job_id}: 콜백 데이터 전송 중...")
+                    print(f"-> Job ID {request.job_id}: 콜백 URL: {request.callback_url}")
+                    print(f"-> Job ID {request.job_id}: 콜백 데이터: {callback_data}")
+                    
+                    response = await http_client.post(
+                        request.callback_url, 
+                        json=callback_data, 
+                        headers=headers,
+                        timeout=60
+                    )
+                    print(f"-> Job ID {request.job_id}: 콜백 응답 코드: {response.status_code}")
+                    print(f"-> Job ID {request.job_id}: 콜백 응답 내용: {response.text}")
+                    response.raise_for_status()
                 except httpx.RequestError as req_err:
-                    print(f"-> Job ID {request.job_id}: 실패 콜백 전송 자체를 실패했습니다: {req_err}")
+                    print(f"-> Job ID {request.job_id}: 콜백 전송을 실패했습니다: {req_err}")
+                except Exception as callback_err:
+                    print(f"-> Job ID {request.job_id}: 콜백 전송 중 오류 발생: {callback_err}")
