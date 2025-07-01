@@ -14,13 +14,13 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "8081"
         prometheus.io/path: "/health"
-        update: fbb27e431c04f3443a36552dc5ff59f4
+        update: 7a5fed82cb944e049415ef6a4de130f4
       labels:
         app: decase-ai
     spec:
       containers:
         - name: decase-ai
-          image: amdp-registry.skala-ai.com/skala25a/sk-team-08-decase-ai:1.0.0-27-b119e9d7ca50
+          image: amdp-registry.skala-ai.com/skala25a/sk-team-08-decase-ai:1.0.0-28-5c6dac82d081
           imagePullPolicy: Always
 
           # 볼륨 마운트 설정
