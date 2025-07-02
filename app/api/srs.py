@@ -1,22 +1,17 @@
 import os
-import json
 import asyncio
-from typing import List
-import httpx
+import traceback
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from concurrent.futures import ThreadPoolExecutor
-from pydantic import TypeAdapter, ValidationError
 
-from app.models.job import Job, JobNameEnum, JobStatusEnum
-from app.schemas.requirement import SrsRequirementData
+from app.models.job import JobNameEnum, JobStatusEnum
 from app.core.config import OUTPUT_UPLOADS_DIR, OUTPUT_SRS_DIR
-from datetime import datetime
-from app.services.requirement_service import RequirementService
 from app.core.mysql_config import get_mysql_db
 from app.models import Document, Member, Project
 from sqlalchemy import select
-from app.services.srs_services import update_job_status_in_db, process_srs_background, srs_pipeline
+from app.services.srs_services import update_job_status_in_db, process_srs_background
+from app.services.job_services import create_job_in_db
 
 router = APIRouter()
 
@@ -41,30 +36,23 @@ async def start_srs_analysis(
         raise HTTPException(status_code=400, detail="PDF 파일만 업로드 가능합니다.")
 
     try:
-        job_id = None
-
-        # DB에 Job 생성
         async for db in get_mysql_db():
             # 프로젝트, 멤버 조회 (존재 확인)
             project = await db.scalar(select(Project).where(Project.project_id == project_id))
             member = await db.scalar(select(Member).where(Member.member_id == member_id))
             if not project or not member:
                 raise HTTPException(status_code=404, detail="프로젝트 또는 멤버를 찾을 수 없습니다.")
-
-            new_job = Job(
-                name=JobNameEnum.SRS,
-                project_id=project_id,
-                member_id=member_id,
-                revision_count=0,
-                start_time=datetime.now(),
-                end_time=None,
-                status=JobStatusEnum.PROCESSING
-            )
-            db.add(new_job)
-            await db.commit()
-            await db.refresh(new_job)
-            job_id = new_job.job_id
             break
+
+        # Job 생성
+        new_job = await create_job_in_db(
+            name=JobNameEnum.SRS,
+            project_id=project_id,
+            member_id=member_id,
+            revision_count=0,
+            status=JobStatusEnum.PROCESSING
+        )
+        job_id = new_job.job_id
         
         pdf_content = await file.read()
         
@@ -72,19 +60,19 @@ async def start_srs_analysis(
         
         return {
             "job_id": job_id,
-            "job_name": "SRS",
-            "status": "PROCESSING",
+            "job_name":JobNameEnum.SRS.value,
+            "status": JobStatusEnum.PROCESSING.value,
             "message": "요구사항 분석을 시작합니다."
         }
         
     except Exception as e:
-        import traceback
         error_traceback = traceback.format_exc()
         error_message = f"요구사항 분석 시작 실패:\n{str(e)}\n\n상세 에러:\n{error_traceback}"
         print(error_message)
         
         if job_id is not None:
             await update_job_status_in_db(job_id, JobStatusEnum.FAILED, error_message)
+            
         raise HTTPException(
             status_code=500,
             detail=f"요구사항 분석 시작 실패: {str(e)}"

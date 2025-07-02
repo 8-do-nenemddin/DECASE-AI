@@ -3,24 +3,15 @@ import os
 import asyncio
 import httpx
 
-from datetime import datetime
 from pathlib import Path
 from google import genai
-from urllib.parse import quote
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.job import Job, JobStatusEnum, JobNameEnum
-from app.core.mysql_config import get_mysql_db
-from app.schemas.requirement import SrsRequirementData
-from app.models import Document, Member, Project
-from app.services.requirement_service import RequirementService
+from app.models.job import JobStatusEnum
+from app.services.job_services import update_job_status_in_db
 from app.core.config import OUTPUT_SRS_DIR
 from app.agents.srs.req_extract_agent import extract_requirements
 from app.agents.srs.req_refine_agent import refine_requirements
 from app.core.config import GOOGLE_API_KEY
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
-
 
 async def process_srs_background(pdf_content: bytes, job_id: str, original_filename: str, project_id: int, member_id: int, document_id: str, callback_url: str):
     """요구사항 분석 처리"""
@@ -54,33 +45,21 @@ async def process_srs_background(pdf_content: bytes, job_id: str, original_filen
                 if response.status_code != 200:
                     raise Exception(f"콜백 요청 실패: 응답 코드 {response.status_code}, 응답 내용: {response.text}")
                 # 4. Job 완료 상태 업데이트
-                await update_job_status_in_db(job_id, JobStatusEnum.COMPLETED, "요구사항 명세서(SRS) 생성 및 콜백 전송이 완료되었습니다.")
+                await update_job_status_in_db(job_id, JobStatusEnum.COMPLETED)
             except httpx.RequestError as e:
                 print(f"Job[{job_id}]: 콜백 요청 실패: {e}")
-                await update_job_status_in_db(job_id, JobStatusEnum.FAILED, f"콜백 전송 실패: {e}")
+                await update_job_status_in_db(job_id, JobStatusEnum.FAILED)
             except Exception as e:
                 print(f"Job[{job_id}]: 콜백 요청 실패: {e}")
-                await update_job_status_in_db(job_id, JobStatusEnum.FAILED, f"콜백 전송 실패: {e}")
+                await update_job_status_in_db(job_id, JobStatusEnum.FAILED)
      
     except Exception as e:
         import traceback
         error_traceback = traceback.format_exc()
         error_message = f"요구사항 처리 중 오류 발생:\n{str(e)}\n\n상세 에러:\n{error_traceback}"
         print(error_message)
-        await update_job_status_in_db(job_id, JobStatusEnum.FAILED, error_message)
+        await update_job_status_in_db(job_id, JobStatusEnum.FAILED)
 
-
-async def update_job_status_in_db(job_id: int, status: JobStatusEnum, message: str = None):
-    """Job 상태 업데이트"""
-    async for db in get_mysql_db():
-        job = await db.scalar(select(Job).where(Job.job_id == job_id))
-        if job:
-            job.status = status
-            if status in [JobStatusEnum.COMPLETED, JobStatusEnum.FAILED]:
-                job.end_time = datetime.now()
-            await db.commit()
-            await db.refresh(job)
-        break
 
 def srs_pipeline(pdf_content_bytes: bytes, output_path: Path) -> bytes:
     """

@@ -1,8 +1,8 @@
-import json
+
 import traceback
 import httpx
 import asyncio
-from typing import List, Dict, Any
+from typing import List
 
 from pydantic import BaseModel
 from google import genai
@@ -11,8 +11,6 @@ from app.core.config import GOOGLE_API_KEY
 from app.agents.update.update_req_agent import analyze_requirement_changes
 from app.services.job_services import update_job_status_in_db # job_services.py에 있다고 가정
 from app.models.job import JobStatusEnum
-
-# --- Pydantic 모델 정의 ---
 
 class RequirementItem(BaseModel):
     reqIdCode: str
@@ -34,7 +32,6 @@ class UpdateRequest(BaseModel):
     document_id: str
 
 
-# --- 핵심 백그라운드 실행 함수 ---
 
 async def process_update_background(
     request: UpdateRequest,
@@ -48,13 +45,12 @@ async def process_update_background(
     error_message = None
     
     try:
-        # 1. 데이터 준비
-        # Pydantic 모델 리스트를 Gemini Agent가 사용할 딕셔너리 리스트로 변환
+        # 데이터 준비
         existing_reqs_dict_list = [item.model_dump() for item in request.requirements]
         client = genai.Client(api_key=GOOGLE_API_KEY)
         file_content_str = file_content.decode('utf-8', errors='ignore')
 
-        # 2. 요구사항 변경 분석 실행
+        # 요구사항 변경 분석 실행
         print(f"\n--- Job ID {request.job_id}: 요구사항 변경사항 분석 수행 ---")
         changes = await asyncio.to_thread(
             analyze_requirement_changes,
@@ -66,14 +62,14 @@ async def process_update_background(
         print(f"-> Job ID {request.job_id}: 변경사항 분석 완료.")
 
     except Exception as e:
-        # --- 분석 작업 중 오류 발생 시 실행 ---
+        # 분석 작업 중 오류 발생 시 실행
         error_traceback = traceback.format_exc()
         error_message = f"분석 작업 중 오류 발생 (Job ID: {request.job_id}):\n{str(e)}"
         print(f"\n❌ {error_message}\n{error_traceback}")
         status = "FAILED"
 
     finally:
-        # 3. DB 상태 업데이트 (성공/실패에 따라)
+        # DB 상태 업데이트 (성공/실패에 따라)
         if status == "COMPLETED":
             await update_job_status_in_db(request.job_id, JobStatusEnum.COMPLETED)
             print(f"-> Job ID {request.job_id}: DB 상태를 COMPLETED로 업데이트했습니다.")
@@ -81,7 +77,7 @@ async def process_update_background(
             await update_job_status_in_db(request.job_id, JobStatusEnum.FAILED)
             print(f"-> Job ID {request.job_id}: DB 상태를 FAILED로 업데이트했습니다.")
 
-        # 4. 콜백 전송 
+        # 콜백 전송 
         if request.callback_url:
             print(f"\n--- Job ID {request.job_id}: 콜백 전송 -> {request.callback_url} ---")
             async with httpx.AsyncClient() as http_client:

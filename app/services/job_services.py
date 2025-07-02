@@ -34,3 +34,30 @@ async def update_job_status_in_db(job_id: int, status: JobStatusEnum):
             await db.close()
         
         break # async for 루프는 한 번만 실행
+
+async def create_job_in_db(name, project_id, member_id, revision_count=0, status=JobStatusEnum.PROCESSING):
+    """
+    Job을 DB에 생성하고, 생성된 Job 객체를 반환합니다.
+    """
+    async for db in get_mysql_db():
+        try:
+            new_job = Job(
+                name=name,
+                project_id=project_id,
+                member_id=member_id,
+                revision_count=revision_count,
+                start_time=datetime.now(),
+                end_time=None,
+                status=status
+            )
+            db.add(new_job)
+            await db.commit()
+            await db.refresh(new_job)
+            return new_job
+        except Exception as e:
+            print(f"Failed to create job: {e}")
+            await db.rollback()
+            raise
+        finally:
+            await db.close()
+        break

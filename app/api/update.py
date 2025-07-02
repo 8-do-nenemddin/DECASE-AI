@@ -1,16 +1,15 @@
 import json
 import traceback
-from typing import List, Any
+from typing import List
 from pydantic import parse_obj_as
-from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Form, UploadFile, File, Depends
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Form, UploadFile, File
 from sqlalchemy import select
 
 from app.services.update_service import process_update_background, UpdateRequest, RequirementItem
-from app.services.job_services import update_job_status_in_db
+from app.services.job_services import update_job_status_in_db, create_job_in_db
 from app.models import Member, Project
-from app.models.job import Job, JobNameEnum, JobStatusEnum
+from app.models.job import JobNameEnum, JobStatusEnum   
 from app.core.mysql_config import get_mysql_db
 
 router = APIRouter()
@@ -18,7 +17,7 @@ router = APIRouter()
 @router.post("/meeting-analyze")
 async def analyze_document_for_updates(
     background_tasks: BackgroundTasks,
-    meeting_file: UploadFile = File(..., description="분석할 RFP PDF 파일"),
+    meeting_file: UploadFile = File(..., description="추가 문서 파일"),
     requirements_str: str = Form(..., description="기존 요구사항 목록 (JSON 문자열)"),
     project_id: int = Form(..., description="프로젝트 ID"),
     member_id: int = Form(..., description="멤버 ID"),
@@ -31,9 +30,7 @@ async def analyze_document_for_updates(
     if not meeting_file.filename:
         raise HTTPException(status_code=400, detail="업로드된 파일명이 없습니다.")
 
-    job_id = None
     try:
-        # 1. Form으로 받은 JSON 문자열을 Pydantic 모델 리스트로 파싱 및 검증
         try:
             requirements = parse_obj_as(List[RequirementItem], json.loads(requirements_str))
         except (json.JSONDecodeError, TypeError) as e:
@@ -46,23 +43,16 @@ async def analyze_document_for_updates(
             member = await db.scalar(select(Member).where(Member.member_id == member_id))
             if not project or not member:
                 raise HTTPException(status_code=404, detail="프로젝트 또는 멤버를 찾을 수 없습니다.")
-
-            new_job = Job(
-                name=JobNameEnum.UPDATE,
-                project_id=project_id,
-                member_id=member_id,
-                revision_count=0,
-                start_time=datetime.now(),
-                end_time=None,
-                status=JobStatusEnum.PROCESSING
-            )
-            db.add(new_job)
-            await db.commit()
-            await db.refresh(new_job)
-            job_id = new_job.job_id
-            print(f"Job {job_id}가 생성되었습니다.")
             break
-        
+    
+        new_job = await create_job_in_db(
+            name=JobNameEnum.UPDATE,
+            project_id=project_id,
+            member_id=member_id,
+            revision_count=0,
+            status=JobStatusEnum.PROCESSING
+        )
+        job_id = new_job.job_id
 
         # 3. 백그라운드 작업 준비
         file_content = await meeting_file.read()

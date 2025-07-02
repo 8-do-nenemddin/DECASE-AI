@@ -1,12 +1,11 @@
 import asyncio
-from datetime import datetime
 import io
 import zipfile
 from typing import List
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
-from app.models.job import Job, JobNameEnum, JobStatusEnum
+from app.models.job import JobNameEnum, JobStatusEnum, Job
 from app.models.project import Project
 from app.services.mockup_service import run_mockup_generation_pipeline
 from urllib.parse import quote
@@ -16,6 +15,7 @@ import httpx
 from fastapi import BackgroundTasks
 from app.api.srs import thread_pool
 from app.core.mysql_config import get_mysql_db
+from app.services.job_services import create_job_in_db, update_job_status_in_db
 
 router = APIRouter()
 
@@ -49,33 +49,29 @@ async def generate_mockup_endpoint(
     '''
     try:
         input_data = json.dumps([req.dict() for req in request.requirements], ensure_ascii=False, indent=2)
-        project_id = request.project_id
         
-        # DB에 Job 생성
-        job_id = None
         async for db in get_mysql_db():
-            project = await db.scalar(select(Project).where(Project.project_id == project_id))
+            project = await db.scalar(select(Project).where(Project.project_id == request.project_id))
             if not project:
                 raise HTTPException(status_code=404, detail="프로젝트를 찾을 수 없습니다.")
-
-            new_job = Job(
-                name=JobNameEnum.MOCKUP,
-                project_id=project_id,
-                member_id=None,  # 필요시 request에서 받도록 수정
-                revision_count=request.revision_count,
-                start_time=datetime.now(),
-                end_time=None,
-                status=JobStatusEnum.PROCESSING
-            )
-            db.add(new_job)
-            await db.commit()
-            await db.refresh(new_job)
-            job_id = new_job.job_id
             break
         
-        # 콜백 및 상태 업데이트를 BackgroundTasks로 처리
-        background_tasks.add_task(mockup_and_callback_with_status, input_data, request, project_id, job_id)
-        return {"job_id": job_id, "status": "PROCESSING", "message": "목업 생성 및 콜백 요청이 시작되었습니다."}
+        new_job = await create_job_in_db(
+            name=JobNameEnum.MOCKUP,
+            project_id=request.project_id,
+            member_id=None,
+            revision_count=request.revision_count,
+            status=JobStatusEnum.PROCESSING
+        )
+        job_id = new_job.job_id
+        
+        background_tasks.add_task(mockup_and_callback_with_status, input_data, request, job_id)
+
+        return {
+            "job_id": job_id, 
+            "status": JobStatusEnum.PROCESSING.value, 
+            "message": "목업 생성 및 콜백 요청이 시작되었습니다."
+            }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"목업 생성 실패: {str(e)}")
 
@@ -134,18 +130,8 @@ async def mockup_and_callback_with_status(input_data: str, request: MockupReques
         job_id
     )
     # 상태 업데이트
-    await update_mockup_job_status_in_db(job_id, status)
+    await update_job_status_in_db(job_id, status)
 
-async def update_mockup_job_status_in_db(job_id: int, status: JobStatusEnum):
-    async for db in get_mysql_db():
-        job = await db.scalar(select(Job).where(Job.job_id == job_id))
-        if job:
-            job.status = status
-            if status in ["COMPLETED", "FAILED", "SUCCESS"]:
-                job.end_time = datetime.now()
-            await db.commit()
-            await db.refresh(job)
-        break
 
 @router.get("/job/status")
 async def get_mockup_job_status(
