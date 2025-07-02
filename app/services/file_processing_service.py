@@ -8,6 +8,12 @@ import weasyprint
 import whisper
 import torch
 import PyPDF2
+import asyncio
+import tempfile
+from pathlib import Path
+from fastapi import UploadFile, File, Form, HTTPException, BackgroundTasks
+
+
 from docx import Document
 from typing import List, Tuple, Optional, Dict, Any
 from io import BytesIO
@@ -23,56 +29,6 @@ def sanitize_filename(name: str) -> str:
     name = re.sub(r'[<>:"/\\|?*]', '_', name)
     name = re.sub(r'\s+', '_', name)
     return name[:100] # 파일명 길이 제한
-
-def prepare_data_for_faiss(input_json_path: str) -> List[Dict[str, Any]]:
-    """
-    원본 JSON 파일에서 데이터를 로드하고, 각 항목을 
-    FAISS 인덱싱에 필요한 'text' (임베딩 대상)와 'metadata' (저장할 정보)로 구성된 딕셔너리 리스트로 변환합니다.
-    """
-    try:
-        with open(input_json_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            if not isinstance(data, list): # 단일 객체일 경우 리스트로 감싸기
-                data = [data] if isinstance(data, dict) else []
-    except FileNotFoundError:
-        print(f"오류: 파일을 찾을 수 없습니다 - {input_json_path}")
-        return []
-    except json.JSONDecodeError:
-        print(f"오류: JSON 디코딩 실패 - {input_json_path}")
-        return []
-    except Exception as e:
-        print(f"파일 로드 중 오류 발생 ({input_json_path}): {e}")
-        return []
-
-    faiss_data_items = []
-    for item in data:
-        # 임베딩에 사용될 텍스트 구성 (사용자 스크립트의 chunk_text 구성 방식 참조)
-        embedding_text = f"""[ID] {item.get('id', '')}
-[유형] {item.get('type', '')}
-[설명] {item.get('description_name', '')}
-[요구사항 상세] {item.get('description_content', '')}
-[대상 업무] {item.get('target_task', '')}
-[대분류] {item.get('category_large', '')}
-[중분류] {item.get('category_medium', '')}
-[소분류] {item.get('category_small', '')}
-[중요도] {item.get('importance', '')}
-[난이도] {item.get('difficulty', '')}
-""".strip()  # 앞뒤 공백 제거
-
-        # 메타데이터로 저장할 원본 아이템 또는 선택된 필드들
-        metadata = {
-            "description_name": item.get('description_name', ''),
-            "type": item.get('type', ''),
-            "raw_text": item.get('raw_text', ''),
-            "rfp_page": item.get('rfp_page',''),
-            "mod_reason": item.get('mod_reason', ''),
-            "status": item.get('status', ''),
-        }
-        faiss_data_items.append({
-            "embedding_text_source": embedding_text,
-            "metadata": metadata
-        })
-    return faiss_data_items
 
 def save_report(html_content: str, file_path: str):
     """
@@ -177,12 +133,12 @@ def _extract_text_from_docx(content: bytes) -> str:
             text += para.text + "\n"
     return text
 
-async def extract_text_from_file(file_content: bytes, filename: str) -> str:
+async def extract_text_from_file(file_content: bytes, raw_filename: str) -> str:
     """
     파일 이름과 내용을 받아, 파일 종류에 따라 텍스트를 추출하는 메인 함수.
     CPU를 많이 사용하는 작업은 별도 스레드에서 실행합니다.
     """
-    file_ext = Path(filename).suffix.lower()
+    file_ext = Path(raw_filename).suffix.lower()
     
     if file_ext == ".txt":
         return file_content.decode('utf-8', errors='ignore')

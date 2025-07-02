@@ -26,13 +26,12 @@ async def analyze_and_summarize_document(
     project_id: int = Form(..., description="프로젝트 ID"),
     member_id: int = Form(..., description="멤버 ID"),
     document_id: str = Form(..., description="회의록 요약을 저장할 문서 ID"),
-    callback_url: str = Form(..., description="요구사항 분석 콜백 URL")
+    callback_url: str = Form(..., description="요구사항 분석 콜백 URL"),
+    file_subject: str = Form(..., description="업로드된 파일의 원본 이름")
 ):
     """
     다양한 형식의 문서를 업로드하여 [1]요구사항 변경 제안 생성과 [2]회의록 요약을 동시에 수행합니다.
     """
-    if not extra_file.filename:
-        raise HTTPException(status_code=400, detail="업로드된 파일명이 없습니다.")
 
     job_id = None
     try:
@@ -69,7 +68,8 @@ async def analyze_and_summarize_document(
             member_id=member_id,
             requirements=requirements,
             project_id=project_id,
-            document_id=document_id
+            document_id=document_id,
+            filename=file_subject
         )
         background_tasks.add_task(
             process_update_background,

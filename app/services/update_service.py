@@ -30,6 +30,7 @@ class UpdateRequest(BaseModel):
     requirements: List[RequirementItem]
     project_id: int
     document_id: str
+    filename: str
 
 
 
@@ -56,7 +57,8 @@ async def process_update_background(
             analyze_requirement_changes,
             client=client,
             existing_requirements=existing_reqs_dict_list,
-            file_content_str=file_content_str
+            file_content_str=file_content_str,
+            filename=request.filename
         )
 
         print(f"-> Job ID {request.job_id}: 변경사항 분석 완료.")
