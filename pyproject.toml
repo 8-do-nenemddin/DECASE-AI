@@ -59,6 +59,11 @@ google-genai = "^1.21.0"
 greenlet = "^3.2.3"
 weasyprint = "^65.1"
 playwright = "^1.53.0"
+pypdf2 = "^3.0.1"
+python-docx = "^1.2.0"
+torch = "^2.7.1"
+torchvision = "^0.22.1"
+torchaudio = "^2.7.1"
 
 [build-system]
 requires = ["poetry-core"]

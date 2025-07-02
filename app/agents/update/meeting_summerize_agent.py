@@ -72,7 +72,7 @@ def summarize_meeting_text(full_text: str) -> str :
 """
     try:
         response = client_instance.chat.completions.create(
-            model = LLM_MODEL,
+            model = GPT_MODEL,
             messages = [
                 {"role": "system", "content": "당신은 전문 회의록 요약가입니다."},
                 {"role": "user", "content": prompt}
