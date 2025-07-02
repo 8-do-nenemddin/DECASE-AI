@@ -80,6 +80,16 @@ def save_report(html_content: str, file_path: str):
                          PDF는 동일한 이름으로 확장자만 .pdf로 변경되어 저장됩니다.
     """
     # --- 1. AI 응답 파싱 (Markdown 코드 블록 제거) ---
+    # HTML을 그대로 파일로 저장 (원본 백업 또는 참고용)
+    try:
+        html_path = os.path.splitext(file_path)[0] + ".html"
+        os.makedirs(os.path.dirname(html_path), exist_ok=True)
+        with open(html_path, "w", encoding="utf-8") as f:
+            f.write(html_content)
+        print(f"✅ 원본 HTML이 별도로 저장되었습니다: {html_path}")
+    except Exception as e:
+        print(f"🚨 원본 HTML 저장 실패: {e}")
+        
     try:
         # 정규식을 사용해 ```html 과 ``` 사이의 내용만 정확히 추출
         match = re.search(r"```html(.*)```", html_content, re.DOTALL)

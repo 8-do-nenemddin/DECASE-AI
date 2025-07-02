@@ -33,6 +33,10 @@ class ScreenSpecAgent:
         [작업 지침]
         1. HTML과 요구사항을 분석하여, 화면의 구성 요소와 인터랙션을 파악합니다.
         2. [출력 형식]에 따라, **HTML 본문(body 태그 내부)에 들어갈 내용만** 작성합니다. (상단 헤더 테이블과 이미지는 제외)
+        3. 화면 구성 요소는 너무 상세하게 나열하지 않고, 포괄적인 내용으로 요약합니다.
+        4. 주요 인터랙션은 사용자가 화면에서 수행할 수 있는 주요 작업들을 나열합니다. 세부적인 동작은 제외하고 기능 위주로 작성합니다.
+        5. 출력은 HTML 형식으로만 작성하며, 다른 형식은 사용하지 않습니다.
+        6. 이모티콘은 사용하지 않습니다.
 
         [출력 형식 - HTML]
         <h2>1. 화면 구성 요소 (Screen Components)</h2>
@@ -47,7 +51,7 @@ class ScreenSpecAgent:
         # 동기 함수인 generate_content를 별도 스레드에서 실행하여 비동기 환경에서 블로킹 방지
         response = await asyncio.to_thread(
             self.client.models.generate_content,
-            model="gemini-1.5-pro-latest",
+            model="gemini-2.5-flash",
             contents=prompt,
             config={"temperature": 0.0}
         )
@@ -59,38 +63,3 @@ class ScreenSpecAgent:
             cleaned_html = cleaned_html[:-3]
         
         return cleaned_html.strip()
-
-    async def generate_function_flows(self, screen_overviews: Dict[str, List]) -> Dict[str, str]:
-        """전체 화면 관계를 분석하여 기능 흐름도를 Mermaid 문법으로 생성합니다."""
-        print("  -> Agent: 전체 기능 흐름도 생성 중...")
-        
-        prompt = f"""
-        당신은 화면 목록 정보를 받아서, 기능 흐름도를 Mermaid 문법으로 생성하는 시스템입니다. 다른 설명이나 대화 없이, 오직 요청된 JSON 객체만을 출력해야 합니다.
-        
-        ---
-        [요청 및 출력 예시]
-        ... (이전과 동일하여 생략)
-        ---
-
-        [실제 입력 데이터]
-        ```json
-        {json.dumps(screen_overviews, indent=2)}
-        ```
-        """
-        
-        response = await asyncio.to_thread(
-            self.client.models.generate_content,
-            model="gemini-1.5-pro-latest",
-            contents=prompt,
-            config={"temperature": 0.0}
-        )
-        
-        try:
-            json_match = re.search(r"```json\s*([\s\S]*?)\s*```", response.text)
-            if json_match:
-                return json.loads(json_match.group(1))
-            return json.loads(response.text)
-        except json.JSONDecodeError as e:
-            print("❌ LLM 응답에서 JSON을 파싱하는데 실패했습니다: ", e)
-            print("--- 받은 원본 텍스트 ---\n", response.text)
-            raise e
