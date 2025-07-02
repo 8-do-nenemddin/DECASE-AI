@@ -71,8 +71,8 @@ async def start_srs_analysis(
         print(error_message)
         
         if job_id is not None:
-            await update_job_status_in_db(job_id, JobStatusEnum.FAILED, error_message)
-            
+            await update_job_status_in_db(job_id, JobStatusEnum.FAILED)
+
         raise HTTPException(
             status_code=500,
             detail=f"요구사항 분석 시작 실패: {str(e)}"

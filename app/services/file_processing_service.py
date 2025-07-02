@@ -1,26 +1,15 @@
 # app/services/file_processing_service.py
-import json
-import csv
-import fitz # PyMuPDF
+import io
 import re
 import os
 import weasyprint
 import whisper
-import torch
-import PyPDF2
+import PyPDF2  
 import asyncio
 import tempfile
 from pathlib import Path
-from fastapi import UploadFile, File, Form, HTTPException, BackgroundTasks
-
-
 from docx import Document
-from typing import List, Tuple, Optional, Dict, Any
-from io import BytesIO
-
-
-from langchain_core.documents import Document
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from typing import List
 
 def sanitize_filename(name: str) -> str:
     """파일 이름으로 사용하기 어려운 문자를 제거하거나 대체합니다."""
@@ -30,7 +19,7 @@ def sanitize_filename(name: str) -> str:
     name = re.sub(r'\s+', '_', name)
     return name[:100] # 파일명 길이 제한
 
-def save_report(html_content: str, file_path: str):
+def save_report(html_content: str, file_path: Path):
     """
     주어진 HTML 콘텐츠를 파싱하여 깨끗한 HTML 파일과 PDF 파일로 저장합니다.
     pyhtml2pdf 라이브러리를 사용하여 PDF를 생성합니다.

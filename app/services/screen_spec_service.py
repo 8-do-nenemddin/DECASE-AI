@@ -7,14 +7,17 @@ from pathlib import Path
 from typing import List, Dict, Any
 from datetime import datetime
 
+import httpx
 from playwright.async_api import async_playwright
 
 from app.agents.mockup.screen_spec_agent import ScreenSpecAgent
-from app.core.config import GOOGLE_API_KEY # config 파일에서 API 키를 가져온다고 가정
+from app.core.config import GOOGLE_API_KEY
+from app.models.job import JobStatusEnum
+from app.services.job_services import update_job_status_in_db # config 파일에서 API 키를 가져온다고 가정
 
 # --- 서비스의 핵심 실행 함수 ---
 
-async def generate_spec_and_flow_documents(mockup_dir_str: str, output_dir_str: str):
+async def generate_spec_and_flow_documents(mockup_dir_str: str, output_dir_str: str, job_id: int, project_id: int, revision_count: int, callback_url: str):
     """
     전체 프로세스를 관장하는 서비스 함수.
     파일 로드, 스크린샷, Agent 호출, 파일 저장을 모두 수행합니다.
@@ -42,7 +45,28 @@ async def generate_spec_and_flow_documents(mockup_dir_str: str, output_dir_str: 
         await asyncio.gather(*tasks)
 
     # 4. (옵션) 기능 흐름도 생성 로직을 여기에 추가할 수 있습니다.
-    
+    # 화면정의서 생성 완료 콜백
+    async with httpx.AsyncClient() as client:
+            data = {
+                "project_id": project_id,
+                "revision_count": revision_count,
+                "status": "COMPLETED",
+            }
+
+            try:
+                response = await client.post(callback_url, json=data, timeout=60)
+                print(f"Job[{job_id}]: 콜백 요청 완료. 응답 코드: {response.status_code}")
+                if response.status_code != 200:
+                    raise Exception(f"콜백 요청 실패: 응답 코드 {response.status_code}, 응답 내용: {response.text}")
+                # 4. Job 완료 상태 업데이트
+                await update_job_status_in_db(job_id, JobStatusEnum.COMPLETED)
+            except httpx.RequestError as e:
+                print(f"Job[{job_id}]: 콜백 요청 실패: {e}")
+                await update_job_status_in_db(job_id, JobStatusEnum.FAILED)
+            except Exception as e:
+                print(f"Job[{job_id}]: 콜백 요청 실패: {e}")
+                await update_job_status_in_db(job_id, JobStatusEnum.FAILED)
+     
     print("🎉 모든 작업이 완료되었습니다.")
 
 
