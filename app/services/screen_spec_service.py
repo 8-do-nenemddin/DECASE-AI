@@ -47,14 +47,15 @@ async def generate_spec_and_flow_documents(mockup_dir_str: str, output_dir_str: 
     # 4. (옵션) 기능 흐름도 생성 로직을 여기에 추가할 수 있습니다.
     # 화면정의서 생성 완료 콜백
     async with httpx.AsyncClient() as client:
-            data = {
-                "project_id": project_id,
-                "revision_count": revision_count,
+            print(project_id)
+            params = {
+                "projectId": project_id,
+                "revisionCount": revision_count,
                 "status": "COMPLETED",
             }
 
             try:
-                response = await client.post(callback_url, json=data, timeout=60)
+                response = await client.post(callback_url, params=params, timeout=60)
                 print(f"Job[{job_id}]: 콜백 요청 완료. 응답 코드: {response.status_code}")
                 if response.status_code != 200:
                     raise Exception(f"콜백 요청 실패: 응답 코드 {response.status_code}, 응답 내용: {response.text}")
