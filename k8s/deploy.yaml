@@ -14,7 +14,7 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "8081"
         prometheus.io/path: "/health"
-        update: 1095f8b825fe1e415b531016c46cb630
+        update: a63eb97ca4331ce36cf4f6cd7499bd27
       labels:
         app: decase-ai
     spec:
@@ -40,7 +40,7 @@ spec:
 
       containers:
         - name: decase-ai
-          image: amdp-registry.skala-ai.com/skala25a/sk-team-08-decase-ai:1.0.0-46-515fa3084893
+          image: amdp-registry.skala-ai.com/skala25a/sk-team-08-decase-ai:1.0.0-47-1f410f3e55c5
           imagePullPolicy: Always
 
           # 🔑 Spring Boot와 같은 PVC, 같은 경로에 마운트
