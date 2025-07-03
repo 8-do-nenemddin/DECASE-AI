@@ -4,7 +4,7 @@ FROM amdp-registry.skala-ai.com/skala25a/decase-ai-base:1.0.0
 COPY . /app
 
 # Playwright 브라우저 및 의존성 설치
-RUN playwright install
+RUN playwright install --with-deps chromium
 
 EXPOSE 8000 8081 8080
 
