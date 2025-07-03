@@ -135,7 +135,8 @@ async def mockup_and_callback_with_status(input_data: str, request: MockupReques
 
 @router.get("/job/status")
 async def get_mockup_job_status(
-    project_id: int
+    project_id: int,
+    revision_count: int
     ):
     '''
     목업 생성 작업 상태 조회 api
@@ -143,7 +144,7 @@ async def get_mockup_job_status(
     async for db in get_mysql_db():
         job = await db.scalar(
             select(Job)
-            .where(Job.project_id == project_id, Job.name == JobNameEnum.MOCKUP)
+            .where(Job.project_id == project_id, Job.name == JobNameEnum.MOCKUP, Job.revision_count == revision_count)
             .order_by(Job.start_time.desc())
         )
         if not job:

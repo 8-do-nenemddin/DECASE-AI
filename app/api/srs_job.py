@@ -36,7 +36,6 @@ async def get_latest_srs_status_by_project_member(
             select(Job)
             .where(
                 Job.project_id == project_id,
-                Job.member_id == member_id,
                 Job.name == job_name  
             )
             .order_by(Job.start_time.desc())
