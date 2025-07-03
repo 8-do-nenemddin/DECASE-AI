@@ -14,20 +14,39 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "8081"
         prometheus.io/path: "/health"
-        update: 4dac4ce7692506ef24796f5d56ea75ac
+        update: 62eb9c7a3aa3ef95486a48a513429efa
       labels:
         app: decase-ai
     spec:
+      # 🔑 Spring Boot와 동일한 PVC 공유를 위한 초기화
+      initContainers:
+        - name: init-shared-storage
+          image: busybox:1.35
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Initializing shared storage directories..."
+              mkdir -p /app/storage/uploads
+              mkdir -p /app/storage/srs
+              mkdir -p /app/storage/asis
+              mkdir -p /app/storage/mockups
+              chmod -R 777 /app/storage
+              ls -la /app/storage
+              echo "Shared storage initialization complete"
+          volumeMounts:
+            - name: shared-storage-volume
+              mountPath: /app/storage
+
       containers:
         - name: decase-ai
-          image: amdp-registry.skala-ai.com/skala25a/sk-team-08-decase-ai:1.0.0-42-59414e68ff66
+          image: amdp-registry.skala-ai.com/skala25a/sk-team-08-decase-ai:1.0.0-41-38890f2e043c
           imagePullPolicy: Always
 
-          # 볼륨 마운트 설정
+          # 🔑 Spring Boot와 같은 PVC, 같은 경로에 마운트
           volumeMounts:
-            # 파일 스토리지 경로들
-            - name: storage-volume
-              mountPath: /app/storage # 기본 docs 디렉터리
+            - name: shared-storage-volume
+              mountPath: /app/storage  # Spring Boot와 동일
 
           env:
             - name: LOGGING_LEVEL
@@ -36,6 +55,7 @@ spec:
               value: sk-team-08
             - name: NAMESPACE
               value: sk-team-08
+            
             # DB 설정
             - name: MARIA_PASSWORD
               valueFrom:
@@ -62,11 +82,12 @@ spec:
                 secretKeyRef:
                   name: ai-secret
                   key: MARIA_NAME
-            # api key 설정
+            
+            # API Key 설정
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: ai-secret # 이거 ai secret이라고 써잇던데 decase-secret이 맞지않나..?
+                  name: ai-secret
                   key: OPENAI_API_KEY
             - name: ANTHROPIC_API_KEY
               valueFrom:
@@ -78,18 +99,19 @@ spec:
                 secretKeyRef:
                   name: ai-secret
                   key: GOOGLE_API_KEY
-            # 파일 스토리지 경로 설정
+            
+            # 🔑 Spring Boot와 호환되는 경로 설정
             - name: FILE_STORAGE_PATH_UPLOADS
-              value: "/app/docs/uploads" # 볼륨 마운트 경로로 설정
+              value: "/app/storage/uploads"    # Spring Boot: /app/storage/uploads
             - name: FILE_STORAGE_PATH_SRS
-              value: "/app/docs/srs" # 볼륨 마운트 경로로 설정
+              value: "/app/storage/srs"        # Spring Boot: /app/storage (신규)
             - name: FILE_STORAGE_PATH_ASIS
-              value: "/app/docs/asis" # 볼륨 마운트 경로로 설정
+              value: "/app/storage/asis"       # Spring Boot: /app/storage/asis
             - name: FILE_STORAGE_PATH_MOCKUP
-              value: "/app/docs/mockup" # 볼륨 마운트 경로로 설정
-      # 단순 볼륨 설정
+              value: "/app/storage/mockups"    # Spring Boot: /app/storage/mockups
+
+      # 🔑 Spring Boot와 같은 PVC 사용
       volumes:
-        - name: storage-volume
-          hostPath:
-            path: /var/lib/decase-ai-storage
-            type: DirectoryOrCreate # 기본 디렉터리만 자동 생성
+        - name: shared-storage-volume
+          persistentVolumeClaim:
+            claimName: decase-efs-sc-pvc  # Spring Boot와 동일한 PVC
