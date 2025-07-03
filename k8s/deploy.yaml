@@ -27,7 +27,7 @@ spec:
           volumeMounts:
             # 파일 스토리지 경로들
             - name: storage-volume
-              mountPath: /app/docs # 기본 docs 디렉터리
+              mountPath: /app/storage # 기본 docs 디렉터리
 
           env:
             - name: LOGGING_LEVEL
