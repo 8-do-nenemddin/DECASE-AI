@@ -35,7 +35,7 @@ async def process_as_is_background(pdf_content: bytes, job_id: int, project_id: 
         # 분석 파이프라인 실패 시 처리
         if result_pdf_bytes is None:
             print(f"Job[{job_id}]: asis_pipeline에서 PDF를 생성하지 못했습니다.")
-            await update_job_status_in_db(job_id, JobStatusEnum.FAILED, "As-Is 분석 보고서 생성에 실패했습니다.")
+            await update_job_status_in_db(job_id, JobStatusEnum.FAILED)
             return
 
         # 3. 콜백 전송
@@ -57,14 +57,14 @@ async def process_as_is_background(pdf_content: bytes, job_id: int, project_id: 
                 response = await client.post(callback_url, data=data, files=files, timeout=60)
                 print(f"Job[{job_id}]: 콜백 요청 완료. 응답 코드: {response.status_code}")
                 # 4. Job 완료 상태 업데이트
-                await update_job_status_in_db(job_id, JobStatusEnum.COMPLETED, "As-Is 분석 및 콜백 전송이 완료되었습니다.")
+                await update_job_status_in_db(job_id, JobStatusEnum.COMPLETED)
             except httpx.RequestError as e:
                 print(f"Job[{job_id}]: 콜백 요청 실패: {e}")
-                await update_job_status_in_db(job_id, JobStatusEnum.FAILED, f"콜백 전송 실패: {e}")
+                await update_job_status_in_db(job_id, JobStatusEnum.FAILED)
 
     except Exception as e:
         print(f"Job[{job_id}]: 처리 중 오류 발생 - {e}")
-        await update_job_status_in_db(job_id, JobStatusEnum.FAILED, f"As-Is 분석 실패: {e}")
+        await update_job_status_in_db(job_id, JobStatusEnum.FAILED)
 
 
 def asis_pipeline(pdf_content_bytes: bytes, output_pdf_path: Path) -> bytes | None:

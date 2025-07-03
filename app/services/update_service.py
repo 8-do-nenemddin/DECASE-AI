@@ -1,4 +1,3 @@
-
 import traceback
 import httpx
 import asyncio
@@ -49,7 +48,10 @@ async def process_update_background(
         # 데이터 준비
         existing_reqs_dict_list = [item.model_dump() for item in request.requirements]
         client = genai.Client(api_key=GOOGLE_API_KEY)
-        file_content_str = file_content.decode('utf-8', errors='ignore')
+        if isinstance(file_content, bytes):
+            file_content_str = file_content.decode('utf-8', errors='ignore')
+        else:
+            file_content_str = file_content
 
         # 요구사항 변경 분석 실행
         print(f"\n--- Job ID {request.job_id}: 요구사항 변경사항 분석 수행 ---")

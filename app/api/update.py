@@ -18,7 +18,7 @@ from app.core.mysql_config import get_mysql_db
 
 router = APIRouter()
 
-@router.post("/update")
+@router.post("/meeting-analyze")
 async def analyze_and_summarize_document(
     background_tasks: BackgroundTasks,
     extra_file: UploadFile = File(..., description="분석 및 요약할 문서 파일(txt, pdf, docx, wav 등)"),
@@ -57,7 +57,13 @@ async def analyze_and_summarize_document(
                 raise HTTPException(status_code=404, detail="프로젝트 또는 멤버를 찾을 수 없습니다.")
             break
             
-        new_job = await create_job_in_db(...) # 파라미터 생략
+        new_job = await create_job_in_db(
+            name=JobNameEnum.UPDATE,
+            project_id=project_id,
+            member_id=member_id,
+            revision_count=0,
+            status=JobStatusEnum.PROCESSING
+        )
         job_id = new_job.job_id
 
         # 3. 백그라운드 작업 준비 및 시작
@@ -94,7 +100,7 @@ async def analyze_and_summarize_document(
 
         # DB에 Job이 생성된 후 다른 예외가 발생했다면 FAILED 처리
         if job_id:
-            await update_job_status_in_db(job_id, JobStatusEnum.FAILED, error_message)
+            await update_job_status_in_db(job_id, JobStatusEnum.FAILED)
 
         raise HTTPException(
             status_code=500,

@@ -7,7 +7,8 @@ class JobNameEnum(str, enum.Enum):
     SRS = "SRS"
     ASIS = "ASIS"
     MOCKUP = "MOCKUP"
-    UPDATE = "UPDATE"
+    UPDATE = "UPDATE",
+    SCREEN_SPEC = "SCREEN_SPEC"
 
 class JobStatusEnum(str, enum.Enum):
     PROCESSING = "PROCESSING"

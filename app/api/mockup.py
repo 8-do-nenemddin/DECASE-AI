@@ -65,7 +65,7 @@ async def generate_mockup_endpoint(
         )
         job_id = new_job.job_id
         
-        background_tasks.add_task(mockup_and_callback_with_status, input_data, request, job_id)
+        background_tasks.add_task(mockup_and_callback_with_status, input_data, request, request.project_id, job_id)
 
         return {
             "job_id": job_id, 
