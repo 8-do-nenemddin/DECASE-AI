@@ -1,7 +1,6 @@
 # app/services/screen_spec_service.py
 import os
 import json
-import base64
 import asyncio
 from pathlib import Path
 from typing import List, Dict, Any
@@ -10,7 +9,7 @@ from datetime import datetime
 from playwright.async_api import async_playwright
 
 from app.agents.mockup.screen_spec_agent import ScreenSpecAgent
-from app.core.config import GOOGLE_API_KEY # config 파일에서 API 키를 가져온다고 가정
+from app.core.config import GOOGLE_API_KEY 
 
 # --- 서비스의 핵심 실행 함수 ---
 
@@ -36,47 +35,54 @@ async def generate_spec_and_flow_documents(mockup_dir_str: str, output_dir_str: 
     for filename, html_content in html_contents.items():
         associated_reqs = [req_data.get(req_id) for req_id in page_map.get(filename, []) if req_data.get(req_id)]
         tasks.append(
-            _process_single_screen(agent, filename, html_content, associated_reqs, mockup_dir, output_dir)
+            # [수정] associated_reqs 인자 제거 (현재 로직에서 사용되지 않음)
+            _process_single_screen(agent, filename, html_content, mockup_dir, output_dir)
         )
     if tasks:
         await asyncio.gather(*tasks)
-
-    # 4. (옵션) 기능 흐름도 생성 로직을 여기에 추가할 수 있습니다.
     
     print("🎉 모든 작업이 완료되었습니다.")
 
 
-async def _process_single_screen(agent: ScreenSpecAgent, filename: str, html_content: str, associated_reqs: List, mockup_dir: Path, output_dir: Path):
+# [수정] 함수의 로직을 에이전트의 흐름에 맞게 완전히 변경
+async def _process_single_screen(agent: ScreenSpecAgent, filename: str, html_content: str, mockup_dir: Path, output_dir: Path):
     """한 화면에 대한 스크린샷, 분석, HTML 조립 및 저장을 처리합니다."""
     print(f"📄 '{filename}' 화면에 대한 전체 문서 작업 시작...")
     
     html_path = mockup_dir / filename
-    screenshot_path = mockup_dir / (html_path.stem + ".png")
+    # 최종 결과물에서 상대 경로로 이미지를 참조하기 위해 경로 설정
+    screenshot_filename = html_path.stem + ".png"
+    screenshot_path = output_dir / screenshot_filename
     
-    # 스크린샷 캡처
+    # 1. 스크린샷 캡처 (결과물 폴더에 바로 저장)
     try:
         await _capture_screenshot(html_path, screenshot_path)
+        print(f"  📸 -> '{filename}' 스크린샷 캡처 완료: {screenshot_path}")
     except Exception as e:
         print(f"  -> ⚠️ '{filename}' 스크린샷 생성 중 오류 발생: {e}")
         return
 
-    # Agent를 통해 설명 생성
-    description_html = await agent.generate_document_for_screen(filename, html_content, associated_reqs)
-    if not description_html:
+    # 2. Agent를 통해 분석 데이터(JSON) 생성
+    spec_data = await agent.generate_spec_json(filename, html_content)
+    if not spec_data:
+        print(f"  -> ⚠️ '{filename}' 분석 데이터 생성 실패.")
         return
         
-    # 최종 HTML 조립
-    relative_image_path = f"../{mockup_dir.name}/{screenshot_path.name}"
-    header_html = f"""<table border="1" style="width:100%; border-collapse: collapse;"><tr style="background-color:#f2f2f2;"><th style="padding:8px; text-align:left;">Page Title</th><td style="padding:8px;">{Path(filename).stem}</td><th style="padding:8px; text-align:left;">Screen ID</th><td style="padding:8px;">{filename}</td><th style="padding:8px; text-align:left;">Date</th><td style="padding:8px;">{datetime.now().strftime('%Y.%m.%d')}</td></tr></table>"""
-    image_html = f"""<h2>1. 화면 이미지</h2><div style="text-align:center; margin: 20px 0; border: 1px solid #ddd; padding: 10px;"><img src="{relative_image_path}" alt="{filename} Screen Capture" style="max-width: 100%; height: auto;"></div>"""
-    final_body = header_html + image_html + description_html
-    full_html = _wrap_in_html(f"화면설계서: {filename}", final_body)
+    # 3. 분석 데이터에 스크린샷 경로 추가
+    # HTML 파일에서 이미지를 참조해야 하므로, 파일명만 넘겨 상대 경로로 사용
+    spec_data["imagePath"] = screenshot_filename
 
-    # 파일 저장
+    # 4. Agent의 템플릿과 데이터를 사용해 최종 HTML 조립
+    template_html = agent.html_template()
+    full_html = ScreenSpecAgent.fill_html_with_json(spec_data, template_html)
+
+    # 5. 최종 화면정의서 파일 저장
     spec_filename = Path(filename).stem + "_spec.html"
-    with open(output_dir / spec_filename, 'w', encoding='utf-8') as f:
+    final_path = output_dir / spec_filename
+    with open(final_path, 'w', encoding='utf-8') as f:
         f.write(full_html)
-    print(f"  💾 -> '{output_dir / spec_filename}' 파일로 저장 완료.\n")
+    print(f"  💾 -> '{final_path}' 화면 정의서 파일로 저장 완료.\n")
+
 
 # --- 유틸리티 및 헬퍼 함수 ---
 
@@ -106,7 +112,3 @@ async def _capture_screenshot(html_path: Path, output_path: Path):
         await page.goto(html_path.resolve().as_uri())
         await page.screenshot(path=output_path)
         await browser.close()
-
-def _wrap_in_html(title: str, body_content: str) -> str:
-    style = """<style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;line-height:1.6;padding:1em 2em;color:#333}h1,h2{border-bottom:1px solid #eaecef;padding-bottom:.3em}table{border-collapse:collapse;width:100%;margin:1em 0}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background-color:#f6f8fa}code{background-color:#f0f0f0;padding:2px 5px;border-radius:4px}</style>"""
-    return f'<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>{title}</title>{style}</head><body>{body_content}</body></html>'
