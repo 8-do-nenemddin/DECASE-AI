@@ -14,82 +14,70 @@ def extract_requirements(client:genai.Client, uploaded_file: Any) -> List[Dict[s
     print("\n🚀 1단계: 요구사항 식별, 분해 및 상세 설명 생성을 시작합니다...")
     
     prompt = """
-    <prompt>
-        <persona>
-            당신은 20년 경력의 Lead Solutions Architect이자 요구사항 엔지니어링 전문가입니다. 당신의 핵심 역량은 복잡한 RFP 문서의 모든 미묘한 뉘앙스를 포착하여, 기능적 요구사항뿐만 아니라 개발자들이 놓치기 쉬운 데이터, 성능, 보안, 운영 등 모든 종류의 비기능적 요구사항까지 완벽하게 식별하고 구체화하는 것입니다. 당신의 최종 목표는 이 분석 결과를 바탕으로 즉시 개발에 착수할 수 있는 수준의 포괄적이고 세분화된 시스템 요구사항 명세서(SRS)를 JSON 형식으로 작성하는 것입니다.
-        </persona>
-
-        <instructions>
-            <goal>
-                첨부된 <document_to_analyze>의 **모든 페이지와 모든 섹션을 단 하나의 예외도 없이** 분석하여, 포괄적인 요구사항 목록을 생성하십시오.
-            </goal>
-
-            <workflow>
-                <step id="1" name="1단계: 전체 문서 정독 및 원시 요구사항 후보군 추출">
-                    - 먼저, 문서 전체를 처음부터 끝까지 정독하며 **문장의 의미와 의도를 파악**하십시오.
-                    - **특정 키워드의 유무에 의존하지 말고**, 문맥을 분석하여 그것이 시스템이 **수행해야 할 기능, 충족해야 할 품질 수준, 지켜야 할 기술적/정책적 제약, 처리해야 할 데이터 명세** 등, 향후 **'구현' 또는 '검증'이 필요한 모든 종류의 서술**을 원시 요구사항 후보군으로 폭넓게 추출하십시오.
-                    - 이 단계에서는 분류나 정제를 시도하지 말고, 누락을 방지하기 위해 가능한 모든 후보를 내부적으로 목록화하는 데 집중하십시오.
-                </step>
-
-                <step id="2" name="2단계: 요구사항 세분화, 구체화 및 필드 매핑">
-                    - 1단계에서 추출한 원시 요구사항 후보군 목록을 하나씩 검토하며, 아래 **<output_field_definitions>과 <rules>에 명시된 규칙과 형식에 따라** 각 필드의 내용을 세분화하고 구체화하여 채워 넣습니다.
-                    - 특히, 각 요구사항을 '기능' 또는 '비기능'으로 명확히 분류하고, `description`을 2문장 내로 명확히 기술하는 규칙을 엄격히 준수하십시오.
-                    
-                </step>
-                
-                <step id="3" name="3단계: 최종 통합 및 JSON 생성">
-                    - 2단계에서 처리된 모든 요구사항을 모아, 의미와 개발 범위가 완전히 동일한 항목은 단일 항목으로 통합하고 `sources` 정보를 병합합니다.
-                    - 최종 확정된 목록을 <output_format>에 맞춰 단일 JSON 배열로 변환합니다. 출력 전, 모든 항목이 <output_field_definitions>의 모든 필수 필드를 포함하고 있는지, JSON 형식이 유효한지 최종 검증을 수행하십시오.
-                </step>
-            </workflow>
-        </instructions>
-
-        <output_field_definitions>
-            <description>
-            모든 요구사항 항목은 아래 필드 정의를 반드시 따라야 합니다.
-            </description>
-            <fields>
-            - `requirement_name`: 분해된 최소 단위 요구사항의 명칭 (예: "사용자 비밀번호 찾기 기능")
-            - `type`: '기능' 또는 '비기능' 중 하나로 분류
-            - `sources`: 출처 목록 배열. `[{ "source_page": <페이지 번호>, "original_text": "<원문 내용>" }]` 형식.
-            - `description`: 요구사항에 대한 상세 설명. 요구사항의 목적과 범위를 2문장 내로 명확히 기술
-            - `target_page`: 이 요구사항이 주로 사용되거나 구현될 시스템 내의 특정 화면 단위 명칭 (예: "관리자 대시보드", "사용자 정보 조회 화면")
-            </fields>
-        </output_field_definitions>
-
-        <rules>
-            <description>
-            요구사항을 세분화하고 구체화할 때 반드시 지켜야 할 규칙입니다.
-            </description>
-            <rule>
-            1.  **최소 단위 분해**:
-                - 기능이나 행위가 나열된 경우('A, B, C 기능', '관리 및 등록') 반드시 개별 기능/행위 단위로 분리하여 독립적인 요구사항 항목을 생성해야 합니다.
-                - 복합적인 문장은 반드시 단일 개발 태스크가 가능한 수준까지 해체하십시오.
-
-            2.  **의미 기반 통합**:
-                - 문서 여러 곳에 흩어져 있더라도, **의미와 개발 범위가 완전히 동일한** 최소 단위 요구사항은 단일 항목으로 통합하십시오.
-                - 통합된 경우, `sources` 배열에 모든 출처(페이지, 원문)를 기록해야 합니다.
+<prompt>
+    <persona>
+        당신은 20년 경력의 Lead Solutions Architect이자 요구사항 엔지니어링 전문가입니다. 당신의 핵심 역량은 어떤 종류의 복잡한 문서에서든 명시적 요구사항은 물론, AS-IS 현황 자료 등에 숨겨진 암묵적 요구사항까지 모두 포착하여, 즉시 개발에 착수할 수 있는 수준의 요구사항 명세서를 작성하는 것입니다.
+    </persona>
+    <instructions>
+        <goal>
+            첨부된 `<document_to_analyze>`의 모든 페이지와 모든 섹션을 분석하여, 아래 `<rules>`와 `<workflow>`에 따라 가장 체계적이고 상세한 요구사항 목록을 생성하십시오.
+        </goal>
+        <workflow>
+            <step id="1" name="1단계: 마스터 체크리스트 식별 및 컨텍스트 파악">
+                <description>
+                    분석 시작 전, 문서 전체를 훑어보며 사업의 전반적인 목표와 구조를 파악합니다. **특히, '요구사항 총괄표' 또는 '요구사항 목록'과 같이 전체 요구사항의 개수가 명시된 부분을 찾아, 이를 최종 결과물을 검증하기 위한 '마스터 체크리스트'로 설정합니다.**
+                </description>
+            </step>
+            <step id="2" name="2단계: 순차적 정독 및 '요구사항 후보' 발견">
+                <description>
+                    문서를 **1페이지부터 순서대로 정독**하며, 시스템의 기능, 성능, 제약, 정책 등 **'요구사항이 될 수 있는' 모든 진술을 발견하는 즉시 '요구사항 후보'로 식별하고 수집**합니다.
+                </description>
+            </step>
+            <step id="3" name="3단계: 후보 종합, 분해/통합 및 상세 설명 재구성">
+                <description>
+                    2단계에서 수집된 모든 '요구사항 후보'들을 검토하고, `<rules>`에 따라 관련 후보들을 **분해하거나 통합**합니다. 이후, 수집된 모든 정보를 바탕으로 개발자가 즉시 이해할 수 있는 명확한 상세 설명을 재구성합니다.
+                </description>
+            </step>
+            <step id="4" name="4단계: 마스터 체크리스트 기반 최종 검증 및 포맷팅">
+                <description>
+                    3단계에서 정리된 결과물이 **1단계에서 식별한 '마스터 체크리스트'의 모든 항목(예:95개)을 충족하는지 교차 검증**합니다. 누락된 항목이 있다면, 해당 ID를 찾아 반드시 추가하거나 다른 요구사항에 내용이 통합되었음을 명확히 합니다. 검증이 완료된 최종 결과물만 지정된 JSON 형식으로 포맷팅합니다.
+                </description>
+            </step>
+        </workflow>
+    </instructions>
+    <rules>
+        <description>
+            요구사항을 처리할 때 반드시 지켜야 할 핵심 원칙입니다.
+        </description>
+        <rule id="A" name="암묵적 요구사항 발견 원칙 (AS-IS 분석)">
+            - AS-IS 메뉴 목록, 기존 기능 리스트, 현행 업무 프로세스 설명 등 **현재 시스템의 현황을 나타내는 자료는 '새로운 시스템이 최소한 이 기능들을 모두 계승하거나 대체해야 한다'는 요구사항으로 간주**합니다.
+            - 이러한 목록의 각 항목(예: 메뉴명)은 개별 기능 요구사항으로 분해하여 추출해야 합니다.
         </rule>
-
-        <output_format>
-            <description>
-                서론, 요약 등 다른 설명은 일절 포함하지 말고, 오직 요구사항 객체들을 담고 있는 단일 JSON 배열 형식으로만 응답하십시오.
-            </description>
-            <example>
-            [
-                {
-                    "requirement_name": "사용자 비밀번호 찾기 기능",
-                    "type": "기능",
-                    "sources": [
-                        { "source_page": 15, "original_text": "사용자는 아이디와 이메일 인증을 통해 비밀번호를 찾을 수 있어야 한다." }
-                    ],
-                    "description": "사용자가 분실한 비밀번호를 재설정할 수 있도록 지원합니다. 아이디 입력 후 등록된 이메일로 인증 코드를 발송하여 본인 인증을 수행합니다.",
-                    "target_page": "로그인 / 비밀번호 찾기 화면"
-                }
-            ]
-            </example>
-        </output_format>
-    </prompt>
+        <rule id="B" name="최소 단위 분해 원칙">
+            - 한 항목에 여러 기능이나 행위가 '그리고', ',', '/', '및' 등으로 나열된 경우(예: '사용자 관리, 등록 및 조회 기능'), 반드시 각각의 독립적인 기능으로 분리하여 별도의 요구사항 항목을 생성해야 합니다.
+        </rule>
+        <rule id="C" name="의미 기반 통합 원칙">
+            - 서로 다른 페이지에 언급되어 있더라도, 의미와 개발 범위가 동일한 최소 단위 요구사항은 단 하나의 항목으로 통합하고, `sources` 필드에는 모든 출처를 기록해야 합니다.
+        </rule>
+    </rules>
+    <output_field_definitions>
+        <description>
+            모든 요구사항 항목은 아래 필드 정의를 반드시 따라야 합니다.
+        </description>
+        <fields>
+        - `requirement_name`: 분해된 최소 단위 요구사항의 명칭 (예: "금융인증서 로그인 기능")
+        - `type`: '기능' 또는 '비기능' 중 하나로 분류
+        - `sources`: 해당 요구사항이 언급된 '모든' 출처 목록 배열. `[{ "source_page": <페이지 번호>, "original_text": "<원문 내용>" }]` 형식.
+        - `description`: 문서 전체의 관련 정보를 종합하여 재구성한 상세 설명. 요구사항의 목적과 범위를 명확히 기술.
+        - `target_page`: 이 요구사항이 주로 사용되거나 구현될 시스템 내의 특정 화면 단위 명칭 (예: "로그인 화면", "계좌이체 화면")
+        </fields>
+    </output_field_definitions>
+    <output_format>
+        <description>
+            서론, 요약 등 다른 설명은 일절 포함하지 말고, 오직 요구사항 객체들을 담고 있는 단일 JSON 배열 형식으로만 응답하십시오.
+        </description>
+    </output_format>
+</prompt>
     """
     try:
         response = client.models.generate_content(
@@ -106,6 +94,7 @@ def extract_requirements(client:genai.Client, uploaded_file: Any) -> List[Dict[s
         )
         extracted_requirements = json.loads(response.text)
         print("응답 토큰 :", response.usage_metadata)
+        print(f"✅ 1단계 완료: {extracted_requirements}")
         print("🚀 분석 완료! 요구사항 목록을 성공적으로 생성했습니다.")
         return extracted_requirements
     except Exception as e:

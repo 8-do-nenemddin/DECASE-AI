@@ -10,6 +10,7 @@ from app.models.job import JobStatusEnum
 from app.services.job_services import update_job_status_in_db
 from app.core.config import OUTPUT_SRS_DIR
 from app.agents.srs.req_extract_agent import extract_requirements
+from app.agents.srs.req_segment_agent import refine_single_requirement
 from app.agents.srs.req_refine_agent import refine_requirements
 from app.core.config import GOOGLE_API_KEY
 
@@ -72,8 +73,16 @@ def srs_pipeline(pdf_content_bytes: bytes, output_path: Path) -> bytes:
 
     try:
         extracted_requirements = extract_requirements(client, pdf_content_bytes)
-        final_requirements = refine_requirements(client, extracted_requirements, chunk_size=30)
-        
+
+        print("\n🚀 2단계: 추출된 요구사항 세분화를 시작합니다...")
+        middle_requirements = []
+        for req in extracted_requirements:
+            # 각 요구사항을 세분화 에이전트에게 보내 분해 요청
+            split_reqs = refine_single_requirement(client, req)
+            middle_requirements.extend(split_reqs)
+            
+        final_requirements = refine_requirements(client, middle_requirements, chunk_size=30)
+
         # --- ▼▼▼ 수정된 부분 2: 성공 로직을 try 블록 안으로 이동 ▼▼▼ ---
         if final_requirements:
             final_json_output = json.dumps(final_requirements, indent=2, ensure_ascii=False)
