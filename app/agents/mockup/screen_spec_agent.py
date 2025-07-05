@@ -56,7 +56,7 @@ class ScreenSpecAgent:
             colspan="1"
             style="
               padding: 8px;
-              background-color: #5b9bd5;
+              background-color: #bababa;
               color: white;
               font-weight: bold;
               text-align: center;
@@ -74,7 +74,7 @@ class ScreenSpecAgent:
             colspan="1"
             style="
               padding: 8px;
-              background-color: #5b9bd5;
+              background-color: #bababa;
               color: white;
               font-weight: bold;
               text-align: center;
@@ -92,7 +92,7 @@ class ScreenSpecAgent:
             colspan="1"
             style="
               padding: 8px;
-              background-color: #5b9bd5;
+              background-color: #bababa;
               color: white;
               font-weight: bold;
               text-align: center;
@@ -109,7 +109,7 @@ class ScreenSpecAgent:
             colspan="1"
             style="
               padding: 8px;
-              background-color: #5b9bd5;
+              background-color: #bababa;
               color: white;
               font-weight: bold;
               text-align: center;
@@ -124,7 +124,7 @@ class ScreenSpecAgent:
             colspan="1"
             style="
               padding: 8px;
-              background-color: #5b9bd5;
+              background-color: #bababa;
               color: white;
               font-weight: bold;
               text-align: center;
@@ -141,7 +141,7 @@ class ScreenSpecAgent:
             colspan="7"
             style="
               padding: 8px;
-              background-color: #5b9bd5;
+              background-color: #bababa;
               color: white;
               font-weight: bold;
               text-align: center;
@@ -175,7 +175,7 @@ class ScreenSpecAgent:
           <td
             style="
               padding: 8px;
-              background-color: #5b9bd5;
+              background-color: #bababa;
               color: white;
               font-weight: bold;
               text-align: center;
@@ -194,7 +194,7 @@ class ScreenSpecAgent:
           <td
             style="
               padding: 8px;
-              background-color: #5b9bd5;
+              background-color: #bababa;
               color: white;
               font-weight: bold;
               text-align: center;
@@ -213,7 +213,7 @@ class ScreenSpecAgent:
           <td
             style="
               padding: 8px;
-              background-color: #5b9bd5;
+              background-color: #bababa;
               color: white;
               font-weight: bold;
               text-align: center;
