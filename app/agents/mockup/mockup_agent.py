@@ -1,5 +1,4 @@
 # app/agents/mockup_agent.py
-
 import re
 from typing import List, Dict, Any, Tuple
 import google.generativeai as genai
