@@ -5,6 +5,7 @@ COPY . /app
 
 # Playwright 브라우저 및 의존성 설치
 RUN playwright install --with-deps chromium
+RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 
 EXPOSE 8000 8081 8080
 
